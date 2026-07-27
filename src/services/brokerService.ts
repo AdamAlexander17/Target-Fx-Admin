@@ -63,5 +63,11 @@ export const brokerService = {
  match_all_condition: matchAllCondition
  })
  return response.data.data.broker
+ },
+
+ // Unlock broker account
+ async unlockBroker(id: number): Promise<{ broker_id: number; message: string; previous_failed_attempts: number; username: string }> {
+ const response = await api.post<ApiResponse<{ broker_id: number; message: string; previous_failed_attempts: number; username: string }>>(`/api/brokers/${id}/unlock`)
+ return response.data.data
  }
 }

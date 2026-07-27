@@ -167,6 +167,20 @@ const Brokers: React.FC = () => {
     }
   )
 
+  // Unlock broker mutation
+  const unlockBrokerMutation = useMutation(
+    (id: number) => brokerService.unlockBroker(id),
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['brokers'])
+        toast.success(`Broker "${data.username}" unlocked successfully!`)
+      },
+      onError: (error: any) => {
+        toast.error(error.response?.data?.message || 'Failed to unlock broker')
+      }
+    }
+  )
+
   const handleCreateBroker = () => {
     setEditingBroker(null)
     setIsModalOpen(true)
@@ -204,6 +218,10 @@ const Brokers: React.FC = () => {
 
   const handleToggleStatus = (id: number) => {
     toggleStatusMutation.mutate(id)
+  }
+
+  const handleUnlockBroker = (broker: Broker) => {
+    unlockBrokerMutation.mutate(broker.id)
   }
 
   const handleSubmit = async (data: CreateBrokerData | UpdateBrokerData) => {
@@ -685,6 +703,7 @@ const Brokers: React.FC = () => {
             onEdit={handleEditBroker}
             onDelete={handleDeleteBroker}
             onToggleStatus={handleToggleStatus}
+            onUnlock={handleUnlockBroker}
             onViewBills={(broker) => navigate(`/brokers/${broker.id}/bills`)}
             onSort={handleSort}
             currentSort={{
