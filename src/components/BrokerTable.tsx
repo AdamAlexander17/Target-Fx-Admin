@@ -5,7 +5,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DocumentTextIcon,
-  ArrowPathRoundedSquareIcon
+  ArrowPathRoundedSquareIcon,
+  ArrowsRightLeftIcon
 } from '@heroicons/react/24/outline'
 import { Broker } from '../types'
 
@@ -20,6 +21,7 @@ interface BrokerTableProps {
   onDelete: (id: number) => void
   onToggleStatus: (id: number) => void
   onViewBills?: (broker: Broker) => void
+  onViewExchange?: (broker: Broker) => void
   onUnlock?: (broker: Broker) => void
   onSort: (field: string) => void
   currentSort: { field: string; order: 'ASC' | 'DESC' }
@@ -41,6 +43,7 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
   onDelete,
   onToggleStatus,
   onViewBills,
+  onViewExchange,
   onUnlock,
   onSort,
   currentSort,
@@ -50,7 +53,7 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
   topContent
 }) => {
   const { canEdit, canDelete } = usePermissions()
-  const showActions = canEdit(MODULES.BROKERS) || canDelete(MODULES.BROKERS) || !!onViewBills
+  const showActions = canEdit(MODULES.BROKERS) || canDelete(MODULES.BROKERS) || !!onViewBills || !!onViewExchange
 
     // No need to fetch rights separately; use rights_count from brokers API response
     // Remove brokerRights and loadingRights state and effect
@@ -118,6 +121,15 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
                         title="View bills"
                       >
                         <DocumentTextIcon className="h-5 w-5" />
+                      </button>
+                    )}
+                    {onViewExchange && (
+                      <button
+                        onClick={() => onViewExchange(broker)}
+                        className="p-1 text-blue-500 hover:text-blue-700"
+                        title="View exchange data"
+                      >
+                        <ArrowsRightLeftIcon className="h-5 w-5" />
                       </button>
                     )}
                     {onUnlock && (
@@ -314,6 +326,15 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
                             title="View bills"
                           >
                             <DocumentTextIcon className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
+                          </button>
+                        )}
+                        {onViewExchange && (
+                          <button
+                            onClick={() => onViewExchange(broker)}
+                            className="group/btn relative p-1.5 text-blue-600 hover:text-white rounded-lg bg-blue-50 hover:bg-blue-700 transition-all duration-200 hover:shadow-md hover:shadow-blue-500/50 hover:scale-110"
+                            title="View exchange data"
+                          >
+                            <ArrowsRightLeftIcon className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
                           </button>
                         )}
                         {onUnlock && (

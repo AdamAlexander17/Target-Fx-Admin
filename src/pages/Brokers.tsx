@@ -705,6 +705,7 @@ const Brokers: React.FC = () => {
             onToggleStatus={handleToggleStatus}
             onUnlock={handleUnlockBroker}
             onViewBills={(broker) => navigate(`/brokers/${broker.id}/bills`)}
+            onViewExchange={(broker) => navigate(`/brokers/${broker.id}/exchange-data`)}
             onSort={handleSort}
             currentSort={{
               field: clientSideSort.field || filters.sort_by || 'created_at',

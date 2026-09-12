@@ -12,10 +12,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-white lg:gap-4 lg:pr-4">
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(true)} />
+         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+         <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Page content */}
         <motion.main 
           initial={{ opacity: 0 }}

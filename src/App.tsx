@@ -24,6 +24,7 @@ import ModalTest from './components/ModalTest'
 import Dashboard from './pages/Dashboard'
 import CreateBroker from './pages/CreateBroker'
 import BrokerBills from './pages/BrokerBills'
+import BrokerExchange from './pages/BrokerExchange'
 import SettlementWeeks from './pages/SettlementWeeks'
 import { MODULES, PERMISSIONS } from './utils/permissions'
 
@@ -96,6 +97,7 @@ function App() {
                                         <Route path="/modal-test" element={<ModalTest />} />
                                         <Route path="/create-broker" element={<PermissionGate permission={PERMISSIONS.BROKERS_CREATE} fallback={<AccessDenied title="Create Broker" />}><CreateBroker /></PermissionGate>} />
                                         <Route path="/brokers/:brokerId/bills" element={<ModuleRoute module={MODULES.BROKERS} title="Bills"><BrokerBills /></ModuleRoute>} />
+                                        <Route path="/brokers/:brokerId/exchange-data" element={<ModuleRoute module={MODULES.BROKERS} title="Exchange Data"><BrokerExchange /></ModuleRoute>} />
                                         <Route path="/settlement-weeks" element={<ModuleRoute module={MODULES.SETTLEMENT_WEEKS} title="Settlement Weeks"><SettlementWeeks /></ModuleRoute>} />
                                     </Routes>
                                 </motion.div>
