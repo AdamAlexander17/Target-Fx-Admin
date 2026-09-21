@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
@@ -12,6 +12,31 @@ import { groupService } from '../services/groupService'
 import { mt5SuggestionsService } from '../services/mt5SuggestionsService'
 import { Broker, CreateBrokerData, UpdateBrokerData, AccountMapping } from '../types'
 import toast from 'react-hot-toast'
+
+const ACCOUNT_MAPPING_FIELDS = [
+  { label: 'Numeric Fields', options: [{ value: 'Account', label: 'Account' }] },
+  {
+    label: 'Text Fields',
+    options: [
+      { value: 'Group', label: 'Group' },
+      { value: 'Name', label: 'Name' },
+      { value: 'LastName', label: 'Last Name' },
+      { value: 'MiddleName', label: 'Middle Name' },
+      { value: 'Email', label: 'Email' },
+      { value: 'Phone', label: 'Phone' },
+      { value: 'Company', label: 'Company' },
+      { value: 'Status', label: 'Status' },
+      { value: 'LeadCampaign', label: 'Lead Campaign' },
+      { value: 'LeadSource', label: 'Lead Source' },
+      { value: 'Country', label: 'Country' },
+      { value: 'State', label: 'State' },
+      { value: 'City', label: 'City' },
+      { value: 'ZipCode', label: 'Zip Code' },
+      { value: 'Address', label: 'Address' },
+      { value: 'Comment', label: 'Comment' }
+    ]
+  }
+]
 
 interface BrokerModalProps {
   broker: Broker | null
@@ -45,10 +70,31 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     is_active: true,
     credit_limit: undefined,
     default_percentage: undefined,
+    telegram_id: undefined,
     match_all_condition: undefined
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Custom field dropdown (always opens downward, scrolls internally)
+  const [fieldMenu, setFieldMenu] = useState<{ top: number; left: number; width: number } | null>(null)
+  const fieldMenuRef = useRef<HTMLDivElement>(null)
+  const closeFieldMenu = () => setFieldMenu(null)
+  useEffect(() => {
+    if (!fieldMenu) return
+    const close = () => setFieldMenu(null)
+    // Ignore scrolling of the menu itself; close only when something else scrolls
+    const closeOnOuterScroll = (e: Event) => {
+      if (fieldMenuRef.current && e.target instanceof Node && fieldMenuRef.current.contains(e.target)) return
+      setFieldMenu(null)
+    }
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', closeOnOuterScroll, true)
+    return () => {
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', closeOnOuterScroll, true)
+    }
+  }, [fieldMenu])
   const [selectedRights, setSelectedRights] = useState<number[]>([])
   const [selectedGroups, setSelectedGroups] = useState<number[]>([])
   
@@ -376,6 +422,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         is_active: broker.is_active ?? true,
         credit_limit: broker.credit_limit,
         default_percentage: broker.default_percentage,
+        telegram_id: broker.telegram_id,
         match_all_condition: broker.match_all_condition
       })
     } else {
@@ -390,6 +437,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         is_active: true,
         credit_limit: undefined,
         default_percentage: undefined,
+        telegram_id: undefined,
         match_all_condition: undefined
       })
       setSelectedRights([])
@@ -440,6 +488,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       newErrors.username = 'Username is required'
     }
 
+    if (formData.telegram_id !== undefined && (!Number.isInteger(formData.telegram_id) || formData.telegram_id <= 0)) {
+      newErrors.telegram_id = 'Telegram ID must be a positive whole number'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -486,6 +538,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         is_active: formData.is_active,
         credit_limit: formData.credit_limit,
         default_percentage: formData.default_percentage,
+        telegram_id: formData.telegram_id,
         match_all_condition: formData.match_all_condition,
         right_ids: rightsToSync // Use selected permissions
       }
@@ -1081,6 +1134,29 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                             </select>
                           </div>
 
+                          <div>
+                            <label className="block text-xs font-semibold mb-1.5 text-slate-700">Telegram ID</label>
+                            <input
+                              type="number"
+                              name="telegram_id"
+                              min={1}
+                              step={1}
+                              inputMode="numeric"
+                              onKeyDown={(e) => {
+                                if (['-', '+', '.', ',', 'e', 'E'].includes(e.key)) e.preventDefault()
+                              }}
+                              value={formData.telegram_id ?? ''}
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '')
+                                setFormData(prev => ({ ...prev, telegram_id: digits === '' ? undefined : parseInt(digits, 10) }))
+                                if (errors.telegram_id) setErrors(prev => ({ ...prev, telegram_id: '' }))
+                              }}
+                              className="w-full px-3 py-2 text-sm border-2 border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-300 transition-all"
+                              placeholder="Enter telegram ID"
+                            />
+                            {errors.telegram_id && <p className="mt-1 text-[10px] text-red-600 font-medium">⚠️ {errors.telegram_id}</p>}
+                          </div>
+
                         </div>
                       </motion.div>
                     )}
@@ -1559,48 +1635,66 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                               <label className="block text-xs font-medium text-slate-700 mb-1">
                                 Field *
                               </label>
-                              <select
-                                name="field_name"
-                                value={accountMappingData.field_name}
-                                onChange={(e) => {
-                                  const fieldName = e.target.value
-                                  setAccountMappingData(prev => ({ 
-                                    ...prev, 
-                                    field_name: fieldName,
-                                    // Auto-set appropriate operator based on field type
-                                    operator_type: fieldName === 'Account' ? '=' : 'LIKE'
-                                  }))
-                                  if (accountMappingErrors.field_name) {
-                                    setAccountMappingErrors(prev => ({ ...prev, field_name: '' }))
-                                  }
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  if (fieldMenu) return closeFieldMenu()
+                                  const r = e.currentTarget.getBoundingClientRect()
+                                  setFieldMenu({ top: r.bottom + 4, left: r.left, width: r.width })
                                 }}
-                                className={`w-full px-2.5 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-300 ${
+                                className={`w-full px-2.5 py-2 text-xs border rounded-md text-left bg-white flex items-center justify-between focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-300 ${
                                   accountMappingErrors.field_name ? 'border-red-300 bg-red-50' : 'border-slate-300'
                                 }`}
                               >
-                                <option value="">-- Select Field --</option>
-                                <optgroup label="Numeric Fields">
-                                  <option value="Account">Account</option>
-                                </optgroup>
-                                <optgroup label="Text Fields">
-                                  <option value="Group">Group</option>
-                                  <option value="Name">Name</option>
-                                  <option value="LastName">Last Name</option>
-                                  <option value="MiddleName">Middle Name</option>
-                                  <option value="Email">Email</option>
-                                  <option value="Phone">Phone</option>
-                                  <option value="Company">Company</option>
-                                  <option value="Status">Status</option>
-                                  <option value="LeadCampaign">Lead Campaign</option>
-                                  <option value="LeadSource">Lead Source</option>
-                                  <option value="Country">Country</option>
-                                  <option value="State">State</option>
-                                  <option value="City">City</option>
-                                  <option value="ZipCode">Zip Code</option>
-                                  <option value="Address">Address</option>
-                                  <option value="Comment">Comment</option>
-                                </optgroup>
-                              </select>
+                                <span className={accountMappingData.field_name ? 'text-slate-900' : 'text-slate-500'}>
+                                  {ACCOUNT_MAPPING_FIELDS.flatMap(g => g.options).find(o => o.value === accountMappingData.field_name)?.label || '-- Select Field --'}
+                                </span>
+                                <svg className="w-3 h-3 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+                              </button>
+                              {fieldMenu && (
+                                <>
+                                  <div className="fixed inset-0 z-[60]" onClick={closeFieldMenu} />
+                                  <div
+                                    ref={fieldMenuRef}
+                                    className="fixed z-[61] bg-white border border-slate-300 rounded-md shadow-lg overflow-y-auto py-1"
+                                    style={{
+                                      top: fieldMenu.top,
+                                      left: fieldMenu.left,
+                                      width: fieldMenu.width,
+                                      maxHeight: Math.max(120, Math.min(260, window.innerHeight - fieldMenu.top - 12))
+                                    }}
+                                  >
+                                    {ACCOUNT_MAPPING_FIELDS.map(group => (
+                                      <div key={group.label}>
+                                        <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800">{group.label}</div>
+                                        {group.options.map(opt => (
+                                          <button
+                                            type="button"
+                                            key={opt.value}
+                                            onClick={() => {
+                                              setAccountMappingData(prev => ({
+                                                ...prev,
+                                                field_name: opt.value,
+                                                // Auto-set appropriate operator based on field type
+                                                operator_type: opt.value === 'Account' ? '=' : 'LIKE'
+                                              }))
+                                              if (accountMappingErrors.field_name) {
+                                                setAccountMappingErrors(prev => ({ ...prev, field_name: '' }))
+                                              }
+                                              closeFieldMenu()
+                                            }}
+                                            className={`w-full text-left pl-5 pr-2.5 py-1.5 text-xs hover:bg-slate-100 ${
+                                              accountMappingData.field_name === opt.value ? 'bg-slate-100 font-semibold' : ''
+                                            }`}
+                                          >
+                                            {opt.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
                               {accountMappingErrors.field_name && (
                                 <p className="mt-1 text-[10px] text-red-600">{accountMappingErrors.field_name}</p>
                               )}

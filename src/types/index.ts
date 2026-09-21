@@ -100,6 +100,7 @@ export interface Broker {
  is_active: boolean
  credit_limit?: number
  default_percentage?: number
+ telegram_id?: number
  match_all_condition?: boolean
  clients_count?: number
  account_mappings_count?: number
@@ -121,6 +122,7 @@ export interface CreateBrokerData {
  is_active: boolean
  credit_limit?: number
  default_percentage?: number
+ telegram_id?: number
  match_all_condition?: boolean
  right_ids?: number[]
 }
@@ -136,6 +138,7 @@ export interface UpdateBrokerData {
  is_active?: boolean
  credit_limit?: number
  default_percentage?: number
+ telegram_id?: number
  match_all_condition?: boolean
  right_ids?: number[]
 }
