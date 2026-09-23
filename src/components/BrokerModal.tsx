@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import {
+  XMarkIcon,
+  DocumentTextIcon,
+  LinkIcon,
+  ShieldCheckIcon,
+  UserPlusIcon,
+  PaperAirplaneIcon
+} from '@heroicons/react/24/outline'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 
 import { brokerRightsService } from '../services/brokerRightsService'
@@ -10,7 +17,7 @@ import { brokerProfileService } from '../services/brokerProfileService'
 import { brokerGroupMappingService } from '../services/brokerGroupMappingService'
 import { groupService } from '../services/groupService'
 import { mt5SuggestionsService } from '../services/mt5SuggestionsService'
-import { Broker, CreateBrokerData, UpdateBrokerData, AccountMapping } from '../types'
+import { Broker, CreateBrokerData, UpdateBrokerData, AccountMapping, TelegramButtonData } from '../types'
 import toast from 'react-hot-toast'
 
 const ACCOUNT_MAPPING_FIELDS = [
@@ -38,6 +45,45 @@ const ACCOUNT_MAPPING_FIELDS = [
   }
 ]
 
+// Telegram button field/operator sets
+const TELEGRAM_STRING_FIELDS = [
+  'Group', 'Name', 'LastName', 'MiddleName', 'Email', 'Phone', 'Company', 'Status',
+  'LeadCampaign', 'LeadSource', 'Country', 'State', 'City', 'ZipCode', 'Address', 'Comment'
+] as const
+
+const TELEGRAM_NUMERIC_FIELDS = ['Account', 'Accounts'] as const
+
+const TELEGRAM_BUTTON_FIELDS: Array<{ label: string; options: Array<{ value: string; label: string }> }> = [
+  {
+    label: 'Numeric Fields',
+    options: TELEGRAM_NUMERIC_FIELDS.map(f => ({ value: f, label: f }))
+  },
+  {
+    label: 'String Fields',
+    options: TELEGRAM_STRING_FIELDS.map(f => ({
+      value: f,
+      // Split CamelCase into words for the label (LastName -> Last Name)
+      label: f.replace(/([a-z])([A-Z])/g, '$1 $2')
+    }))
+  }
+]
+
+// Numeric fields are matched against login
+const TELEGRAM_NUMERIC_OPERATORS = ['=', '>', '<', '>=', '<=', 'IN', 'RANGE']
+const TELEGRAM_STRING_OPERATORS = ['=', 'LIKE', 'STARTS_WITH', 'CONTAINS', 'ENDS_WITH', 'NOT_CONTAINS']
+
+const isTelegramNumericField = (field: string) => (TELEGRAM_NUMERIC_FIELDS as readonly string[]).includes(field)
+
+const telegramOperatorsFor = (field: string) =>
+  !field ? [] : isTelegramNumericField(field) ? TELEGRAM_NUMERIC_OPERATORS : TELEGRAM_STRING_OPERATORS
+
+// Hint shown under the value input for operators that expect a specific format
+const TELEGRAM_VALUE_HINTS: Record<string, string> = {
+  IN: 'Comma separated list, e.g. 1001,1002,1003',
+  RANGE: 'Min-max, e.g. 1000-2000',
+  LIKE: 'Use % as the wildcard, e.g. demo%'
+}
+
 interface BrokerModalProps {
   broker: Broker | null
   isOpen: boolean
@@ -46,6 +92,131 @@ interface BrokerModalProps {
   isLoading: boolean
 }
 
+// Select that always opens BELOW its trigger and scrolls, instead of the
+// native menu which flips upward near the bottom of the screen.
+interface DropdownOption { value: string; label: string }
+interface DropdownGroup { label: string; options: DropdownOption[] }
+
+const DropdownSelect: React.FC<{
+  value: string
+  placeholder: string
+  groups?: DropdownGroup[]
+  options?: DropdownOption[]
+  disabled?: boolean
+  hasError?: boolean
+  onChange: (value: string) => void
+}> = ({ value, placeholder, groups, options, disabled, hasError, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, maxHeight: 240 })
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
+
+  const allGroups: DropdownGroup[] = groups ?? [{ label: '', options: options ?? [] }]
+  const selected = allGroups.flatMap(g => g.options).find(o => o.value === value)
+
+  const place = () => {
+    const el = triggerRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const top = r.bottom + 4
+    setPos({
+      top,
+      left: r.left,
+      width: r.width,
+      // Always drop downward; scroll inside whatever room is left
+      maxHeight: Math.max(140, Math.min(240, window.innerHeight - top - 12))
+    })
+  }
+
+  const openMenu = () => {
+    place()
+    setIsOpen(true)
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handle = (e: Event) => {
+      // Scrolling within the options list must not move or close it
+      if (e.target instanceof Node && menuRef.current?.contains(e.target)) return
+      place()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    window.addEventListener('resize', handle)
+    window.addEventListener('scroll', handle, true)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('resize', handle)
+      window.removeEventListener('scroll', handle, true)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [isOpen])
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => (isOpen ? setIsOpen(false) : openMenu())}
+        className={`w-full px-3 py-2 text-xs border rounded-md text-left bg-white flex items-center justify-between gap-2 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-400 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+          hasError ? 'border-red-300 bg-red-50' : 'border-slate-300'
+        }`}
+      >
+        <span className={`truncate ${selected ? 'text-slate-900' : 'text-slate-400'}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-[90]" onClick={() => setIsOpen(false)} />
+          <div
+            ref={menuRef}
+            className="fixed z-[91] bg-white border border-slate-200 rounded-md shadow-lg overflow-y-auto py-1 custom-scrollbar"
+            style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
+          >
+            {allGroups.map((group, gi) => (
+              <div key={group.label || gi}>
+                {group.label && (
+                  <div className="px-2.5 py-1 text-[11px] font-bold text-slate-800">{group.label}</div>
+                )}
+                {group.options.map(opt => (
+                  <button
+                    type="button"
+                    key={opt.value}
+                    onClick={() => {
+                      onChange(opt.value)
+                      setIsOpen(false)
+                    }}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 ${
+                      group.label ? 'pl-5' : ''
+                    } ${value === opt.value ? 'bg-slate-100 font-semibold text-slate-900' : 'text-slate-700'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
+// Shared tab styling: icon + label, blue underline when active
+const tabClass = (isActive: boolean) =>
+  `inline-flex items-center gap-2 text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+    isActive
+      ? 'border-blue-600 text-blue-600'
+      : 'border-transparent text-slate-500 hover:text-slate-700'
+  }`
+
 const BrokerModal: React.FC<BrokerModalProps> = ({
   broker,
   isOpen,
@@ -53,7 +224,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
   onSubmit,
   isLoading
 }) => {
-    const [activeTab, setActiveTab] = useState<'basic' | 'permissions' | 'profiles' | 'rights' | 'groups' | 'account-mapping'>('basic')
+    const [activeTab, setActiveTab] = useState<'basic' | 'permissions' | 'profiles' | 'rights' | 'groups' | 'account-mapping' | 'telegram-buttons'>('basic')
   const [selectedProfile, setSelectedProfile] = useState<number | null>(null)
   const [editableRolePermissions, setEditableRolePermissions] = useState<number[]>([])
   const [editableProfileGroups, setEditableProfileGroups] = useState<number[]>([])
@@ -112,6 +283,28 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     operator_type: string
   }>>([])
   const [accountMappingErrors, setAccountMappingErrors] = useState<Record<string, string>>({})
+
+  // Telegram button form state (collected in the UI, saved with the broker)
+  const emptyTelegramButton: TelegramButtonData = {
+    button_name: '',
+    field: '',
+    operator: '=',
+    value: '',
+    display_order: 0
+  }
+  const [telegramButtons, setTelegramButtons] = useState<TelegramButtonData[]>([])
+  const [editingTelegramIndex, setEditingTelegramIndex] = useState<number | null>(null)
+  // The broker list endpoint omits telegram_buttons, so when editing we load the
+  // full broker before trusting the list. Until then we must not submit the array,
+  // otherwise an empty list would wipe the broker's existing buttons.
+  const [telegramButtonsHydrated, setTelegramButtonsHydrated] = useState(false)
+  // Guards against a refetch re-seeding the list over unsaved edits
+  const telegramSeededRef = useRef(false)
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
+  const [telegramDialogData, setTelegramDialogData] = useState<TelegramButtonData>(emptyTelegramButton)
+  const [telegramDialogErrors, setTelegramDialogErrors] = useState<Record<string, string>>({})
+  const [draggedTelegramIndex, setDraggedTelegramIndex] = useState<number | null>(null)
+
   const [mt5Suggestions, setMt5Suggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [profileSearchQuery, setProfileSearchQuery] = useState('')
@@ -129,6 +322,35 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       onError: (error) => {
         console.error('Failed to fetch account mappings:', error)
         setAccountMappings([])
+      }
+    }
+  )
+
+  // Fetch the full broker when editing — the list payload has no telegram_buttons
+  const { isLoading: telegramButtonsLoading } = useQuery(
+    ['broker-detail', broker?.id],
+    () => brokerService.getBrokerById(broker!.id),
+    {
+      enabled: !!broker?.id && isOpen,
+      refetchOnWindowFocus: false,
+      onSuccess: (fullBroker) => {
+        // Seed once per open: a later refetch must not discard staged edits
+        if (telegramSeededRef.current) return
+        setTelegramButtons(
+          (fullBroker?.telegram_buttons || []).map(b => ({
+            button_name: b.button_name ?? '',
+            field: b.field ?? '',
+            operator: b.operator ?? '=',
+            value: b.value ?? '',
+            display_order: b.display_order ?? 0
+          }))
+        )
+        telegramSeededRef.current = true
+        setTelegramButtonsHydrated(true)
+      },
+      onError: (error) => {
+        console.error('Failed to fetch broker detail for telegram buttons:', error)
+        // Leave unhydrated so we do not submit an empty list and wipe buttons
       }
     }
   )
@@ -335,6 +557,97 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     }
   )
 
+  // One dialog handles both adding and editing; editingTelegramIndex says which.
+  const closeTelegramDialog = () => {
+    setTelegramDialogData(emptyTelegramButton)
+    setTelegramDialogErrors({})
+    setEditingTelegramIndex(null)
+    setTelegramDialogOpen(false)
+  }
+
+  // Next free display_order, so a new button lands at the end of the list
+  const nextTelegramDisplayOrder = () =>
+    telegramButtons.length === 0
+      ? 0
+      : Math.max(...telegramButtons.map(b => b.display_order ?? 0)) + 1
+
+  const openAddTelegramDialog = () => {
+    setEditingTelegramIndex(null)
+    setTelegramDialogData({ ...emptyTelegramButton, display_order: nextTelegramDisplayOrder() })
+    setTelegramDialogErrors({})
+    setTelegramDialogOpen(true)
+  }
+
+  // The pencil on a row opens the same dialog, pre-filled with that button
+  const openEditTelegramDialog = (index: number) => {
+    const button = telegramButtons[index]
+    if (!button) return
+    setEditingTelegramIndex(index)
+    setTelegramDialogData({
+      button_name: button.button_name ?? '',
+      field: button.field ?? '',
+      operator: button.operator ?? '=',
+      value: button.value ?? '',
+      display_order: button.display_order ?? 0
+    })
+    setTelegramDialogErrors({})
+    setTelegramDialogOpen(true)
+  }
+
+  // Reorder by drag, renumbering display_order to match the new positions
+  const handleReorderTelegramButtons = (from: number | null, to: number) => {
+    if (from === null || from === to) return
+    setTelegramButtons(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next.map((b, i) => ({ ...b, display_order: i }))
+    })
+  }
+
+  const validateTelegramButtonData = (data: TelegramButtonData) => {
+    const newErrors: Record<string, string> = {}
+    if (!data.button_name.trim()) newErrors.button_name = 'Button name is required'
+    if (!data.field) newErrors.field = 'Field is required'
+    if (!data.value.trim()) newErrors.value = 'Value is required'
+    if (!Number.isInteger(data.display_order) || data.display_order < 0) {
+      newErrors.display_order = 'Display order must be 0 or greater'
+    }
+    return newErrors
+  }
+
+  const toTelegramPayload = (data: TelegramButtonData): TelegramButtonData => ({
+    button_name: data.button_name.trim(),
+    field: data.field,
+    operator: data.operator,
+    value: data.value.trim(),
+    display_order: data.display_order
+  })
+
+  // Updates the row being edited, or appends a new one
+  const handleTelegramDialogSubmit = () => {
+    const newErrors = validateTelegramButtonData(telegramDialogData)
+    setTelegramDialogErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) return
+
+    const payload = toTelegramPayload(telegramDialogData)
+    if (editingTelegramIndex !== null) {
+      setTelegramButtons(prev => prev.map((b, i) => (i === editingTelegramIndex ? payload : b)))
+    } else {
+      setTelegramButtons(prev => [...prev, payload])
+    }
+    closeTelegramDialog()
+  }
+
+  const handleRemoveTelegramButton = (index: number) => {
+    setTelegramButtons(prev => prev.filter((_, i) => i !== index))
+    // Keep an open dialog pointed at the same row
+    if (editingTelegramIndex === index) closeTelegramDialog()
+    else if (editingTelegramIndex !== null && index < editingTelegramIndex) {
+      setEditingTelegramIndex(editingTelegramIndex - 1)
+    }
+  }
+
   // Fetch broker's current rights if editing
   const { data: brokerRights, isLoading: rightsLoading } = useQuery(
     ['broker-rights', broker?.id],
@@ -451,6 +764,20 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     // Reset account mapping form
     setAccountMappingData({ field_name: '', operator_type: '=', field_value: '' })
     setAccountMappingErrors({})
+    // Seed telegram buttons: creating starts empty and is immediately usable,
+    // editing waits for the full broker fetch above before it is safe to submit.
+    setTelegramButtons(
+      (broker?.telegram_buttons || []).map(b => ({
+        button_name: b.button_name ?? '',
+        field: b.field ?? '',
+        operator: b.operator ?? '=',
+        value: b.value ?? '',
+        display_order: b.display_order ?? 0
+      }))
+    )
+    telegramSeededRef.current = false
+    setTelegramButtonsHydrated(!broker)
+    closeTelegramDialog()
   }, [broker, isOpen])
   
   // Separate effect to handle brokerRights and brokerGroups data
@@ -543,6 +870,12 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         right_ids: rightsToSync // Use selected permissions
       }
 
+      // Only send telegram buttons once we know the broker's real list, so a
+      // failed/slow detail fetch can never blank out existing buttons.
+      if (telegramButtonsHydrated) {
+        cleanedData.telegram_buttons = telegramButtons
+      }
+
       // Only include password if user actually typed one
       if (formData.password && formData.password.trim().length > 0) {
         cleanedData.password = formData.password
@@ -553,6 +886,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
 
       // Create/update the broker
       const result = await onSubmit(cleanedData as CreateBrokerData | UpdateBrokerData)
+
+      // Drop the cached detail so the next open reloads the saved telegram buttons
+      const savedBrokerId = broker?.id || result?.id
+      if (savedBrokerId) queryClient.invalidateQueries(['broker-detail', savedBrokerId])
       
       // If this was a new broker creation and we have pending mappings, save them
       if (!broker && pendingMappings.length > 0 && result?.id) {
@@ -962,7 +1299,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
               transition={{ type: "spring", duration: 0.3 }}
               className="relative w-full max-w-3xl mx-4 transform overflow-hidden rounded-xl bg-white shadow-xl"
             >
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit} autoComplete="off">
                 {/* Header */}
                 <div className="flex items-center justify-between bg-white border-b border-slate-300 px-6 py-3.5">
                   <h2 className="text-lg font-bold text-slate-900">{broker ? 'Edit Broker' : 'Create New Broker'}</h2>
@@ -981,24 +1318,18 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('basic')}
-                      className={`min-w-[140px] text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                        activeTab === 'basic'
-                          ? 'border-blue-700 text-slate-900'
-                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white'
-                      }`}
+                      className={tabClass(activeTab === 'basic')}
                     >
+                      <DocumentTextIcon className="w-4 h-4" />
                       Basic Information
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab('account-mapping')}
-                      className={`min-w-[140px] text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                        activeTab === 'account-mapping'
-                          ? 'border-blue-700 text-slate-900'
-                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white'
-                      }`}
+                      className={tabClass(activeTab === 'account-mapping')}
                     >
-                      Add Account Mapping
+                      <LinkIcon className="w-4 h-4" />
+                      Account Mapping
                     </button>
                     
                     {/* Show Rights tab only for EDIT (not for create) */}
@@ -1006,28 +1337,34 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTab('rights')}
-                        className={`min-w-[140px] text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                          activeTab === 'rights'
-                            ? 'border-blue-700 text-slate-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white'
-                        }`}
+                        className={tabClass(activeTab === 'rights')}
                       >
+                        <ShieldCheckIcon className="w-4 h-4" />
                         Rights
                       </button>
                     )}
-                    
+
                     {/* Show Assign Profile tab only when CREATING */}
                     {!broker && (
                       <button
                         type="button"
                         onClick={() => setActiveTab('profiles')}
-                        className={`min-w-[140px] text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                          activeTab === 'profiles'
-                            ? 'border-blue-700 text-slate-900'
-                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white'
-                        }`}
+                        className={tabClass(activeTab === 'profiles')}
                       >
+                        <UserPlusIcon className="w-4 h-4" />
                         Assign Profile
+                      </button>
+                    )}
+
+                    {/* Telegram Buttons tab — available when creating and editing */}
+                    {(
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('telegram-buttons')}
+                        className={tabClass(activeTab === 'telegram-buttons')}
+                      >
+                        <PaperAirplaneIcon className="w-4 h-4" />
+                        Telegram Buttons
                       </button>
                     )}
                   </nav>
@@ -1068,6 +1405,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                               name="username"
                               value={formData.username}
                               onChange={handleInputChange}
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              data-form-type="other"
                               className={`w-full px-3 py-2 text-sm border-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-300 transition-all ${
                                 errors.username ? 'border-red-300 bg-red-50/50' : 'border-slate-300 bg-white text-slate-900'
                               }`}
@@ -1089,6 +1430,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                               name="password"
                               value={formData.password}
                               onChange={handleInputChange}
+                              autoComplete="new-password"
+                              data-lpignore="true"
+                              data-1p-ignore="true"
+                              data-form-type="other"
                               className="w-full px-3 py-2 text-sm border-2 border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-300 transition-all"
                               placeholder={broker ? 'Enter new password to change' : 'Enter password'}
                             />
@@ -1854,6 +2199,142 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                         </div>
                       </motion.div>
                     )}
+
+                    {activeTab === 'telegram-buttons' && (
+                      <motion.div
+                        key="telegram-buttons"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4 gap-3">
+                          <div>
+                            <h3 className="text-base font-semibold text-slate-900 mb-1">Telegram Buttons</h3>
+                            <p className="text-xs text-slate-600">
+                              Configure the telegram buttons for this broker. Changes are saved when you {broker ? 'update' : 'create'} the broker.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={openAddTelegramDialog}
+                            disabled={!!broker && !telegramButtonsHydrated}
+                            className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Button
+                          </button>
+                        </div>
+
+                        <div className="max-h-[min(58vh,420px)] overflow-y-auto pr-1 custom-scrollbar">
+                          {/* Loading the broker's existing buttons */}
+                          {broker && !telegramButtonsHydrated && telegramButtonsLoading && (
+                            <div className="space-y-2">
+                              {[...Array(2)].map((_, i) => (
+                                <div key={i} className="p-3.5 bg-slate-100 rounded-lg animate-pulse">
+                                  <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Could not load existing buttons - editing them would be unsafe */}
+                          {broker && !telegramButtonsHydrated && !telegramButtonsLoading && (
+                            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50">
+                              <p className="text-xs text-amber-800">
+                                Could not load this broker's existing telegram buttons. Close and reopen the modal to retry &mdash;
+                                changes made here will not be saved until they load.
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Buttons list */}
+                          {(!broker || telegramButtonsHydrated) && (telegramButtons.length > 0 ? (
+                            <div className="space-y-2">
+                              {telegramButtons.map((button, index) => (
+                                <div
+                                  key={index}
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault()
+                                    handleReorderTelegramButtons(draggedTelegramIndex, index)
+                                    setDraggedTelegramIndex(null)
+                                  }}
+                                  onDragEnd={() => setDraggedTelegramIndex(null)}
+                                  className={`group flex items-center gap-3 p-3.5 rounded-lg border bg-white transition-all ${
+                                    draggedTelegramIndex === index
+                                      ? 'border-blue-400 opacity-50'
+                                      : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                                  }`}
+                                >
+                                  {/* Drag handle */}
+                                  <span
+                                    draggable
+                                    onDragStart={() => setDraggedTelegramIndex(index)}
+                                    className="cursor-grab active:cursor-grabbing text-slate-300 group-hover:text-slate-400 shrink-0"
+                                    title="Drag to reorder"
+                                  >
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                                      <circle cx="5" cy="3" r="1.3" /><circle cx="11" cy="3" r="1.3" />
+                                      <circle cx="5" cy="8" r="1.3" /><circle cx="11" cy="8" r="1.3" />
+                                      <circle cx="5" cy="13" r="1.3" /><circle cx="11" cy="13" r="1.3" />
+                                    </svg>
+                                  </span>
+
+                                  {/* Order badge */}
+                                  <span className="shrink-0 w-7 h-7 flex items-center justify-center bg-slate-100 text-slate-600 rounded-md text-xs font-semibold">
+                                    {button.display_order ?? 0}
+                                  </span>
+
+                                  {/* Name + condition */}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-semibold text-slate-900 truncate">{button.button_name}</div>
+                                    <div className="text-xs text-slate-600 truncate">
+                                      {button.field}
+                                      <span className="mx-1.5 text-slate-400">{button.operator}</span>
+                                      <span className="text-green-600 font-medium">{button.value}</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditTelegramDialog(index)}
+                                      className="p-2 text-slate-500 border border-slate-200 rounded-lg hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                      title="Edit button"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveTelegramButton(index)}
+                                      className="p-2 text-red-500 border border-slate-200 rounded-lg hover:text-red-700 hover:border-red-300 hover:bg-red-50 transition-colors"
+                                      title="Delete button"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-10 bg-white rounded-lg border-2 border-dashed border-slate-200">
+                              <p className="text-sm text-slate-500 mb-1">No telegram buttons yet.</p>
+                              <p className="text-xs text-slate-400">Click &ldquo;Add Button&rdquo; to create one.</p>
+                            </div>
+                          ))}
+
+                        </div>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
 
@@ -1948,6 +2429,164 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                   </div>
                 </div>
               </form>
+
+              {/* Add / Edit telegram button dialog */}
+              <AnimatePresence>
+                {telegramDialogOpen && (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-[70] bg-slate-900/40"
+                      onClick={closeTelegramDialog}
+                    />
+                    <div className="fixed inset-0 z-[71] flex items-center justify-center p-4 pointer-events-none">
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                        transition={{ type: 'spring', duration: 0.25 }}
+                        className="pointer-events-auto w-full max-w-lg rounded-xl bg-white shadow-2xl overflow-hidden"
+                      >
+                        {/* Dialog header */}
+                        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+                          <h3 className="text-sm font-bold text-slate-900">
+                            {editingTelegramIndex !== null ? 'Edit Telegram Button' : 'Add Telegram Button'}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={closeTelegramDialog}
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            <XMarkIcon className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Dialog body */}
+                        <div className="px-5 py-4 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Button Name *</label>
+                              <input
+                                type="text"
+                                autoFocus
+                                value={telegramDialogData.button_name}
+                                onChange={(e) => {
+                                  setTelegramDialogData(prev => ({ ...prev, button_name: e.target.value }))
+                                  if (telegramDialogErrors.button_name) setTelegramDialogErrors(prev => ({ ...prev, button_name: '' }))
+                                }}
+                                placeholder="e.g. 13500 Master"
+                                className={`w-full px-2.5 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-400 ${
+                                  telegramDialogErrors.button_name ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                                }`}
+                              />
+                              {telegramDialogErrors.button_name && (
+                                <p className="mt-1 text-[10px] text-red-600">{telegramDialogErrors.button_name}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Display Order</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={telegramDialogData.display_order}
+                                onChange={(e) => {
+                                  const digits = e.target.value.replace(/[^0-9]/g, '')
+                                  setTelegramDialogData(prev => ({ ...prev, display_order: digits === '' ? 0 : parseInt(digits, 10) }))
+                                  if (telegramDialogErrors.display_order) setTelegramDialogErrors(prev => ({ ...prev, display_order: '' }))
+                                }}
+                                placeholder="0"
+                                className={`w-full px-2.5 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-400 ${
+                                  telegramDialogErrors.display_order ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                                }`}
+                              />
+                              {telegramDialogErrors.display_order && (
+                                <p className="mt-1 text-[10px] text-red-600">{telegramDialogErrors.display_order}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Field *</label>
+                              <DropdownSelect
+                                value={telegramDialogData.field}
+                                placeholder="Select field"
+                                groups={TELEGRAM_BUTTON_FIELDS}
+                                hasError={!!telegramDialogErrors.field}
+                                onChange={(field) => {
+                                  setTelegramDialogData(prev => ({
+                                    ...prev,
+                                    field,
+                                    // Keep the operator only if it is valid for the new field type
+                                    operator: telegramOperatorsFor(field).includes(prev.operator) ? prev.operator : '='
+                                  }))
+                                  if (telegramDialogErrors.field) setTelegramDialogErrors(prev => ({ ...prev, field: '' }))
+                                }}
+                              />
+                              {telegramDialogErrors.field && (
+                                <p className="mt-1 text-[10px] text-red-600">{telegramDialogErrors.field}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Operator</label>
+                              <DropdownSelect
+                                value={telegramDialogData.operator}
+                                placeholder="Select operator"
+                                options={telegramOperatorsFor(telegramDialogData.field).map(op => ({ value: op, label: op }))}
+                                disabled={!telegramDialogData.field}
+                                onChange={(operator) => setTelegramDialogData(prev => ({ ...prev, operator }))}
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Value *</label>
+                              <input
+                                type="text"
+                                value={telegramDialogData.value}
+                                onChange={(e) => {
+                                  setTelegramDialogData(prev => ({ ...prev, value: e.target.value }))
+                                  if (telegramDialogErrors.value) setTelegramDialogErrors(prev => ({ ...prev, value: '' }))
+                                }}
+                                placeholder="e.g. 39700"
+                                className={`w-full px-2.5 py-2 text-xs border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-400 ${
+                                  telegramDialogErrors.value ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                                }`}
+                              />
+                              {telegramDialogErrors.value ? (
+                                <p className="mt-1 text-[10px] text-red-600">{telegramDialogErrors.value}</p>
+                              ) : TELEGRAM_VALUE_HINTS[telegramDialogData.operator] ? (
+                                <p className="mt-1 text-[10px] text-slate-500">{TELEGRAM_VALUE_HINTS[telegramDialogData.operator]}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Dialog footer */}
+                        <div className="flex items-center justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-5 py-3">
+                          <button
+                            type="button"
+                            onClick={closeTelegramDialog}
+                            className="px-4 py-1.5 text-sm border border-slate-300 rounded-lg font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleTelegramDialogSubmit}
+                            className="px-5 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                          >
+                            {editingTelegramIndex !== null ? 'Update Button' : 'Add Button'}
+                          </button>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </>
+                )}
+              </AnimatePresence>
             </motion.div>
           </div>
           </div>
