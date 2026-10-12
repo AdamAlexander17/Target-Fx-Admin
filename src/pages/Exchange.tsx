@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   ArrowsRightLeftIcon,
   ArrowPathIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 import PageHeaderShell from '../components/layout/PageHeaderShell'
@@ -11,6 +12,11 @@ import { billsService, SettlementWeek } from '../services/billsService'
 import { brokerService } from '../services/brokerService'
 import { exchangeService } from '../services/exchangeService'
 import ExchangeReportView from '../components/exchange/ExchangeReportView'
+import {
+  buildExchangeReportBlob,
+  exchangeReportFilename,
+  triggerBlobDownload,
+} from '../components/exchange/exchangeExport'
 import CustomDateRangePopover, {
   DateRange,
 } from '../components/exchange/CustomDateRangePopover'
@@ -52,6 +58,7 @@ const Exchange: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange | null>(null)
   const [exchangePage, setExchangePage] = useState(1)
   const [exchangePageSize, setExchangePageSize] = useState(10)
+  const [downloading, setDownloading] = useState(false)
 
   // ─── Broker list ────────────────────────────────────────────────
   const { data: brokersData, isLoading: brokersLoading } = useQuery(
@@ -129,6 +136,64 @@ const Exchange: React.FC = () => {
     () => brokers.find((b) => b.id === brokerId) ?? null,
     [brokers, brokerId]
   )
+
+  // Active filter period (custom dates take precedence over the week).
+  const period = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return { from: dateRange.from, to: dateRange.to, weekName: undefined as string | undefined }
+    }
+    const sw =
+      exchangeData?.settlementWeek ?? weeks.find((w) => w.id === weekId)
+    return {
+      from: sw?.start_date?.slice(0, 10) ?? '',
+      to: sw?.end_date?.slice(0, 10) ?? '',
+      weekName: sw?.name,
+    }
+  }, [dateRange, exchangeData, weeks, weekId])
+
+  // Downloads the full report for the active filter (all pages).
+  const handleDownloadReport = async () => {
+    if (!brokerId || (!weekId && !dateRange)) return
+    setDownloading(true)
+    try {
+      const all = await exchangeService.getAllExchangeData(
+        brokerId,
+        weekId,
+        dateRange
+      )
+      if (!all.report.length) {
+        toast.error('No data to download for this selection')
+        return
+      }
+      const exportPeriod =
+        dateRange?.from && dateRange?.to
+          ? { from: dateRange.from, to: dateRange.to }
+          : {
+              from: all.settlementWeek?.start_date?.slice(0, 10) ?? period.from,
+              to: all.settlementWeek?.end_date?.slice(0, 10) ?? period.to,
+            }
+      const blob = await buildExchangeReportBlob(
+        all.report,
+        all.exchanges,
+        all.totals,
+        exportPeriod
+      )
+      const weekName = dateRange
+        ? undefined
+        : all.settlementWeek?.name ?? period.weekName
+      triggerBlobDownload(
+        blob,
+        exchangeReportFilename(weekName, exportPeriod)
+      )
+      toast.success(`Downloaded report for ${all.report.length} login(s)`)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[Exchange] download failed:', err)
+      toast.error('Failed to download report')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-blue-50/30 to-white">
@@ -218,6 +283,18 @@ const Exchange: React.FC = () => {
                 setExchangePage(1)
               }}
             />
+
+            <button
+              onClick={handleDownloadReport}
+              disabled={!brokerId || (!weekId && !dateRange) || downloading}
+              className="px-3 py-2 bg-blue-700 border border-blue-700 text-white rounded-lg flex items-center gap-1.5 text-sm shadow-sm hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download Excel report for the selected week / date range"
+            >
+              <ArrowDownTrayIcon
+                className={`w-4 h-4 ${downloading ? 'animate-bounce' : ''}`}
+              />
+              <span>{downloading ? 'Downloading…' : 'Download'}</span>
+            </button>
 
             <button
               onClick={() => refetchExchange()}

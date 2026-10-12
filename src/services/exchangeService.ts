@@ -126,6 +126,47 @@ export const exchangeService = {
     return extractResponse(res)
   },
 
+  // Fetch every row for an export in bounded 500-row requests.
+  async getAllExchangeData(
+    brokerId: number,
+    weekId: number | null,
+    dateRange?: ExchangeDateRange | null
+  ): Promise<ExchangeDataResponse> {
+    const chunkSize = 500
+    const firstPage = await this.getExchangeData(
+      brokerId,
+      weekId,
+      1,
+      chunkSize,
+      dateRange
+    )
+    const report = [...firstPage.report]
+    const totalPages = Math.max(1, firstPage.pagination.total_pages)
+
+    for (let page = 2; page <= totalPages; page += 1) {
+      const nextPage = await this.getExchangeData(
+        brokerId,
+        weekId,
+        page,
+        chunkSize,
+        dateRange
+      )
+      report.push(...nextPage.report)
+    }
+
+    return {
+      ...firstPage,
+      report,
+      pagination: {
+        ...firstPage.pagination,
+        limit: chunkSize,
+        page: 1,
+        total: report.length,
+        total_pages: totalPages,
+      },
+    }
+  },
+
   // ── POST .../exchange-data filtered to specific logins ───────────────
   async getExchangeDataForLogins(
     brokerId: number,

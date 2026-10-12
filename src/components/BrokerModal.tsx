@@ -735,7 +735,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         is_active: broker.is_active ?? true,
         credit_limit: broker.credit_limit,
         default_percentage: broker.default_percentage,
-        telegram_id: broker.telegram_id,
+        telegram_id: broker.telegram_id || undefined,
         match_all_condition: broker.match_all_condition
       })
     } else {
@@ -815,7 +815,13 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       newErrors.username = 'Username is required'
     }
 
-    if (formData.telegram_id !== undefined && (!Number.isInteger(formData.telegram_id) || formData.telegram_id <= 0)) {
+    // Telegram ID is optional: only validate when a value was actually entered
+    if (
+      formData.telegram_id !== undefined &&
+      formData.telegram_id !== null &&
+      !Number.isNaN(formData.telegram_id) &&
+      (!Number.isInteger(formData.telegram_id) || formData.telegram_id <= 0)
+    ) {
       newErrors.telegram_id = 'Telegram ID must be a positive whole number'
     }
 
@@ -1482,10 +1488,8 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                           <div>
                             <label className="block text-xs font-semibold mb-1.5 text-slate-700">Telegram ID</label>
                             <input
-                              type="number"
+                              type="text"
                               name="telegram_id"
-                              min={1}
-                              step={1}
                               inputMode="numeric"
                               onKeyDown={(e) => {
                                 if (['-', '+', '.', ',', 'e', 'E'].includes(e.key)) e.preventDefault()
@@ -2100,8 +2104,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                                   if (accountMappingErrors.field_value) {
                                     setAccountMappingErrors(prev => ({ ...prev, field_value: '' }))
                                   }
-                                  // Fetch suggestions for searchable fields
-                                  if (['Name', 'LastName', 'MiddleName', 'Email', 'Account'].includes(accountMappingData.field_name)) {
+                                  // Fetch suggestions for searchable fields.
+                                  // For Group, this also covers searching by account/login number
+                                  // so the matching MT5 group(s) can be looked up and selected.
+                                  if (['Name', 'LastName', 'MiddleName', 'Email', 'Account', 'Group'].includes(accountMappingData.field_name)) {
                                     if (value.length > 0) {
                                       fetchMT5Suggestions(accountMappingData.field_name, value)
                                     }
@@ -2127,11 +2133,14 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                                   {mt5Suggestions.map((suggestion, index) => (
                                     <div
                                       key={index}
-                                      onClick={() => {
+                                      onMouseDown={(e) => {
+                                        // Prevent the input's onBlur from firing (and hiding this list)
+                                        // before the click is registered
+                                        e.preventDefault()
                                         setAccountMappingData(prev => ({ ...prev, field_value: suggestion }))
                                         setShowSuggestions(false)
                                       }}
-                                      className="px-3 py-2 text-xs cursor-pointer hover:bg-white border-b border-slate-300 last:border-b-0 transition-colors"
+                                      className="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100 border-b border-slate-300 last:border-b-0 transition-colors"
                                     >
                                       <span className="text-slate-700">{suggestion}</span>
                                     </div>

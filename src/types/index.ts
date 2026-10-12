@@ -102,6 +102,7 @@ export interface Broker {
  default_percentage?: number
  telegram_id?: number
  match_all_condition?: boolean
+ telegram_buttons?: TelegramButton[]
  clients_count?: number
  account_mappings_count?: number
  group_mappings_count?: number
@@ -125,6 +126,7 @@ export interface CreateBrokerData {
  telegram_id?: number
  match_all_condition?: boolean
  right_ids?: number[]
+ telegram_buttons?: TelegramButtonData[]
 }
 
 export interface UpdateBrokerData {
@@ -141,6 +143,7 @@ export interface UpdateBrokerData {
  telegram_id?: number
  match_all_condition?: boolean
  right_ids?: number[]
+ telegram_buttons?: TelegramButtonData[]
 }
 
 export interface BrokersResponse {
@@ -365,3 +368,24 @@ export interface UpdateRuleData {
  is_active?: boolean
 }
 
+
+// Telegram button interfaces
+export interface TelegramButton {
+  id?: number
+  button_name: string
+  field: string
+  operator: string
+  value: string
+  display_order: number
+  broker_id?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface TelegramButtonData {
+  button_name: string
+  field: string
+  operator: string
+  value: string
+  display_order: number
+}
