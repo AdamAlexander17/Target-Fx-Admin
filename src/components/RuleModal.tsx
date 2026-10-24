@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Rule, CreateRuleData, UpdateRuleData } from '../types'
@@ -123,6 +124,8 @@ const RuleModal: React.FC<RuleModalProps> = ({
   if (!isOpen) return null
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4">
@@ -383,6 +386,7 @@ const RuleModal: React.FC<RuleModalProps> = ({
         </div>
       </div>
     </AnimatePresence>
+    </>
   )
 }
 

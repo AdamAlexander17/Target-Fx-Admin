@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react'
+import SavingOverlay from '../components/ui/SavingOverlay'
+import Loader from '../components/ui/Loader'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -114,6 +116,8 @@ const SettlementWeekModal: React.FC<ModalProps> = ({
   const isEdit = !!initial
 
   return (
+    <>
+    <SavingOverlay show={!!(isSaving)} label="Saving settlement week..." />
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -314,6 +318,7 @@ const SettlementWeekModal: React.FC<ModalProps> = ({
         </div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 
@@ -677,11 +682,8 @@ const SettlementWeeks: React.FC = () => {
                 <tbody className="divide-y divide-slate-200">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={columnCount} className="px-4 py-12 text-center">
-                        <div className="inline-flex items-center gap-2 text-slate-500">
-                          <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                          Loading settlement weeks...
-                        </div>
+                      <td colSpan={columnCount} className="px-4 py-6 text-center">
+                        <Loader label="Loading settlement weeks..." />
                       </td>
                     </tr>
                   ) : paginated.length === 0 ? (

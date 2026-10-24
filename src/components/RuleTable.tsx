@@ -1,4 +1,5 @@
 import React from 'react'
+import Loader from './ui/Loader'
 import { motion } from 'framer-motion'
 import { PowerIcon } from '@heroicons/react/24/outline'
 import { Rule } from '../types'
@@ -38,12 +39,7 @@ const RuleTable: React.FC<RuleTableProps> = ({
     return (
       <div className="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
         {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-        <div className="flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300"></div>
-            <p className="text-sm text-slate-500">Loading rules...</p>
-          </div>
-        </div>
+        <Loader label="Loading rules..." />
       </div>
     )
   }

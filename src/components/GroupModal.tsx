@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, ServerIcon } from '@heroicons/react/24/outline'
 
@@ -102,6 +103,8 @@ const GroupModal: React.FC<GroupModalProps> = ({
   ]
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -320,6 +323,7 @@ const GroupModal: React.FC<GroupModalProps> = ({
         </div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 

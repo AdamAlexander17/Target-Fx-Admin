@@ -100,6 +100,7 @@ export const MODULES = {
  LOGS: 'logs', // System/MT5 logs (requires system.admin)
  PROFILE: 'profile', // Portfolio/Settings
  SETTLEMENT_WEEKS: 'settlement_weeks', // Settlement-week CRUD
+ TUTORIALS: 'tutorials', // Tutorial videos CRUD
 } as const
 
 // Default mapping (fallback when backend doesn't send permissions)

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import Loader from './ui/Loader'
+import BrokerOverviewModal from './BrokerOverviewModal'
 import { 
   PencilIcon, 
   TrashIcon,
@@ -6,7 +8,8 @@ import {
   ChevronRightIcon,
   DocumentTextIcon,
   ArrowPathRoundedSquareIcon,
-  ArrowsRightLeftIcon
+  ArrowsRightLeftIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline'
 import { Broker } from '../types'
 
@@ -52,11 +55,19 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
   onPageChange,
   topContent
 }) => {
-  const { canEdit, canDelete } = usePermissions()
-  const showActions = canEdit(MODULES.BROKERS) || canDelete(MODULES.BROKERS) || !!onViewBills || !!onViewExchange
+  usePermissions()
+  // Overview is read-only, so the Actions column is shown to every viewer
+  const showActions = true
+  const [overviewBroker, setOverviewBroker] = useState<Broker | null>(null)
 
     // No need to fetch rights separately; use rights_count from brokers API response
     // Remove brokerRights and loadingRights state and effect
+
+  // null/undefined → "0.0"; numbers in Indian grouping with 2 decimals
+  const formatCredit = (v?: number | null) =>
+    v === null || v === undefined || Number.isNaN(Number(v))
+      ? '0.0'
+      : Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const getRightsDisplay = (brokerId: number) => {
     const broker = brokers.find(b => b.id === brokerId)
@@ -67,13 +78,7 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
     return (
       <div className="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
         {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-        <div className="p-6">
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 rounded bg-blue-200"></div>
-            ))}
-          </div>
-        </div>
+        <Loader label="Loading brokers..." />
       </div>
     )
   }
@@ -222,7 +227,13 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
                     )}
                   </div>
                 </th>
-                <th 
+                <th className="px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-slate-700">
+                  Available Credit
+                </th>
+                <th className="px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide text-slate-700">
+                  Credit Limit
+                </th>
+                <th
                   onClick={() => onSort('is_active')}
                   className={`px-2 py-1.5 text-center text-xs font-bold uppercase tracking-wide cursor-pointer transition-colors ${
                     false 
@@ -293,6 +304,12 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
                   <td className="px-2 py-2 text-center">
                     <p className="text-xs text-slate-700">{broker.default_percentage ?? 0}</p>
                   </td>
+                  <td className="px-2 py-2 text-center">
+                    <p className="text-xs text-slate-700">{formatCredit(broker.credit_usage?.available_credit)}</p>
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <p className="text-xs font-semibold text-slate-700">{formatCredit(broker.credit_usage?.credit_limit)}</p>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <PermissionGate module={MODULES.BROKERS} action="edit">
                       <label className="relative inline-flex items-center cursor-pointer group/toggle">
@@ -319,6 +336,13 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
                   {showActions && (
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setOverviewBroker(broker)}
+                          className="group/btn relative p-1.5 text-blue-600 hover:text-white rounded-lg bg-blue-50 hover:bg-blue-700 transition-all duration-200 hover:shadow-md hover:shadow-blue-500/50 hover:scale-110"
+                          title="Overview"
+                        >
+                          <EyeIcon className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
+                        </button>
                         {onViewBills && (
                           <button
                             onClick={() => onViewBills(broker)}
@@ -376,6 +400,10 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
             </tbody>
           </table>
         </div>
+
+      {overviewBroker && (
+        <BrokerOverviewModal broker={overviewBroker} onClose={() => setOverviewBroker(null)} />
+      )}
     </div>
   )
 }

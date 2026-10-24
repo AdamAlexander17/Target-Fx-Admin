@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { User, Role, CreateUserData, UpdateUserData } from '../services/userService'
@@ -148,6 +149,8 @@ const UserModal: React.FC<UserModalProps> = ({
   if (!isOpen) return null
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -375,6 +378,7 @@ const UserModal: React.FC<UserModalProps> = ({
         </div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 

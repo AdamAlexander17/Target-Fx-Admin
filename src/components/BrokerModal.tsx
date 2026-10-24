@@ -11,13 +11,14 @@ import {
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 
 import { brokerRightsService } from '../services/brokerRightsService'
+import SavingOverlay from './ui/SavingOverlay'
 import { brokerService } from '../services/brokerService'
 import { accountMappingService } from '../services/accountMappingService'
 import { brokerProfileService } from '../services/brokerProfileService'
 import { brokerGroupMappingService } from '../services/brokerGroupMappingService'
 import { groupService } from '../services/groupService'
 import { mt5SuggestionsService } from '../services/mt5SuggestionsService'
-import { Broker, CreateBrokerData, UpdateBrokerData, AccountMapping, TelegramButtonData } from '../types'
+import { Broker, CreateBrokerData, UpdateBrokerData, AccountMapping, TelegramButton, TelegramButtonData } from '../types'
 import toast from 'react-hot-toast'
 
 const ACCOUNT_MAPPING_FIELDS = [
@@ -209,6 +210,7 @@ const DropdownSelect: React.FC<{
   )
 }
 
+
 // Shared tab styling: icon + label, blue underline when active
 const tabClass = (isActive: boolean) =>
   `inline-flex items-center gap-2 text-center rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
@@ -224,7 +226,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
   onSubmit,
   isLoading
 }) => {
-    const [activeTab, setActiveTab] = useState<'basic' | 'permissions' | 'profiles' | 'rights' | 'groups' | 'account-mapping' | 'telegram-buttons'>('basic')
+  const [activeTab, setActiveTab] = useState<'basic' | 'permissions' | 'profiles' | 'rights' | 'groups' | 'account-mapping' | 'telegram-buttons'>('basic')
   const [selectedProfile, setSelectedProfile] = useState<number | null>(null)
   const [editableRolePermissions, setEditableRolePermissions] = useState<number[]>([])
   const [editableProfileGroups, setEditableProfileGroups] = useState<number[]>([])
@@ -292,14 +294,16 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     value: '',
     display_order: 0
   }
-  const [telegramButtons, setTelegramButtons] = useState<TelegramButtonData[]>([])
+  const [telegramButtons, setTelegramButtons] = useState<TelegramButton[]>([])
+  // True for the whole create/update flow, so the saving overlay stays up
+  // until rights/groups are synced too (not just the first request)
+  const [submitting, setSubmitting] = useState(false)
   const [editingTelegramIndex, setEditingTelegramIndex] = useState<number | null>(null)
   // The broker list endpoint omits telegram_buttons, so when editing we load the
   // full broker before trusting the list. Until then we must not submit the array,
   // otherwise an empty list would wipe the broker's existing buttons.
   const [telegramButtonsHydrated, setTelegramButtonsHydrated] = useState(false)
   // Guards against a refetch re-seeding the list over unsaved edits
-  const telegramSeededRef = useRef(false)
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
   const [telegramDialogData, setTelegramDialogData] = useState<TelegramButtonData>(emptyTelegramButton)
   const [telegramDialogErrors, setTelegramDialogErrors] = useState<Record<string, string>>({})
@@ -326,34 +330,58 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     }
   )
 
-  // Fetch the full broker when editing — the list payload has no telegram_buttons
-  const { isLoading: telegramButtonsLoading } = useQuery(
+  // Load the broker's telegram buttons from the broker detail when editing.
+  // (The deployed backend has no separate telegram-button endpoints; they live
+  // on the broker and are saved via the broker update.) These carry their id.
+  const { isLoading: telegramButtonsLoading, refetch: refetchTelegramButtons } = useQuery(
     ['broker-detail', broker?.id],
     () => brokerService.getBrokerById(broker!.id),
     {
       enabled: !!broker?.id && isOpen,
       refetchOnWindowFocus: false,
       onSuccess: (fullBroker) => {
-        // Seed once per open: a later refetch must not discard staged edits
-        if (telegramSeededRef.current) return
         setTelegramButtons(
-          (fullBroker?.telegram_buttons || []).map(b => ({
-            button_name: b.button_name ?? '',
-            field: b.field ?? '',
-            operator: b.operator ?? '=',
-            value: b.value ?? '',
-            display_order: b.display_order ?? 0
-          }))
+          [...(fullBroker?.telegram_buttons || [])].sort(
+            (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+          )
         )
-        telegramSeededRef.current = true
         setTelegramButtonsHydrated(true)
       },
       onError: (error) => {
-        console.error('Failed to fetch broker detail for telegram buttons:', error)
-        // Leave unhydrated so we do not submit an empty list and wipe buttons
+        console.error('Failed to load broker detail for telegram buttons:', error)
+        // Leave unhydrated so the UI shows the retry hint instead of an empty list
       }
     }
   )
+
+  // Persist the current telegram-button list via the broker update endpoint.
+  // Used in edit mode so every add/edit/delete/reorder saves immediately.
+  const saveTelegramButtonsMutation = useMutation(
+    (buttons: TelegramButton[]) =>
+      brokerService.updateBroker(broker!.id, { telegram_buttons: buttons }),
+    {
+      onSuccess: () => {
+        refetchTelegramButtons()
+      },
+      onError: (error: any) => {
+        toast.error(error?.response?.data?.message || 'Failed to save telegram buttons')
+        refetchTelegramButtons()
+      }
+    }
+  )
+  const telegramSaving = saveTelegramButtonsMutation.isLoading
+
+  // Update local state and, in edit mode, persist the new list immediately.
+  const applyTelegramButtons = async (next: TelegramButton[]) => {
+    setTelegramButtons(next)
+    if (broker) {
+      try {
+        await saveTelegramButtonsMutation.mutateAsync(next)
+      } catch {
+        // error toast shown by the mutation; list is refetched to stay in sync
+      }
+    }
+  }
 
   // Fetch all broker profiles
   const { data: brokerProfiles, isLoading: profilesLoading } = useQuery(
@@ -407,7 +435,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         'ZipCode': 'zipCode',
         'Address': 'address',
         'Comment': 'comment'
-      }
+}
 
       const mt5Field = fieldMapping[fieldName]
       if (mt5Field) {
@@ -594,15 +622,15 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     setTelegramDialogOpen(true)
   }
 
-  // Reorder by drag, renumbering display_order to match the new positions
+  // Reorder by drag, renumbering display_order to match the new positions.
+  // In edit mode the new order is saved immediately.
   const handleReorderTelegramButtons = (from: number | null, to: number) => {
     if (from === null || from === to) return
-    setTelegramButtons(prev => {
-      const next = [...prev]
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      return next.map((b, i) => ({ ...b, display_order: i }))
-    })
+    const next = [...telegramButtons]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    const reordered = next.map((b, i) => ({ ...b, display_order: i }))
+    applyTelegramButtons(reordered)
   }
 
   const validateTelegramButtonData = (data: TelegramButtonData) => {
@@ -624,24 +652,29 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     display_order: data.display_order
   })
 
-  // Updates the row being edited, or appends a new one
-  const handleTelegramDialogSubmit = () => {
+  // Updates the row being edited, or appends a new one. Edit mode saves
+  // immediately; create mode stages locally (saved when the broker is created).
+  const handleTelegramDialogSubmit = async () => {
     const newErrors = validateTelegramButtonData(telegramDialogData)
     setTelegramDialogErrors(newErrors)
     if (Object.keys(newErrors).length > 0) return
 
-    const payload = toTelegramPayload(telegramDialogData)
-    if (editingTelegramIndex !== null) {
-      setTelegramButtons(prev => prev.map((b, i) => (i === editingTelegramIndex ? payload : b)))
-    } else {
-      setTelegramButtons(prev => [...prev, payload])
-    }
+    const fields = toTelegramPayload(telegramDialogData)
+    const next =
+      editingTelegramIndex !== null
+        ? telegramButtons.map((b, i) => (i === editingTelegramIndex ? { ...b, ...fields } : b)) // keep id
+        : [...telegramButtons, fields as TelegramButton]
+
+    await applyTelegramButtons(next)
     closeTelegramDialog()
   }
 
-  const handleRemoveTelegramButton = (index: number) => {
-    setTelegramButtons(prev => prev.filter((_, i) => i !== index))
-    // Keep an open dialog pointed at the same row
+  const handleRemoveTelegramButton = async (index: number) => {
+    const next = telegramButtons
+      .filter((_, i) => i !== index)
+      .map((b, i) => ({ ...b, display_order: i }))
+    await applyTelegramButtons(next)
+
     if (editingTelegramIndex === index) closeTelegramDialog()
     else if (editingTelegramIndex !== null && index < editingTelegramIndex) {
       setEditingTelegramIndex(editingTelegramIndex - 1)
@@ -733,7 +766,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         account_range_from: broker.account_range_from || 1000,
         account_range_to: broker.account_range_to || 2000,
         is_active: broker.is_active ?? true,
-        credit_limit: broker.credit_limit,
+        credit_limit: broker.credit_limit ?? undefined,
         default_percentage: broker.default_percentage,
         telegram_id: broker.telegram_id || undefined,
         match_all_condition: broker.match_all_condition
@@ -764,18 +797,9 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     // Reset account mapping form
     setAccountMappingData({ field_name: '', operator_type: '=', field_value: '' })
     setAccountMappingErrors({})
-    // Seed telegram buttons: creating starts empty and is immediately usable,
-    // editing waits for the full broker fetch above before it is safe to submit.
-    setTelegramButtons(
-      (broker?.telegram_buttons || []).map(b => ({
-        button_name: b.button_name ?? '',
-        field: b.field ?? '',
-        operator: b.operator ?? '=',
-        value: b.value ?? '',
-        display_order: b.display_order ?? 0
-      }))
-    )
-    telegramSeededRef.current = false
+    // Telegram buttons: create mode starts empty and ready; edit mode is filled
+    // (with real ids) by the dedicated telegram-buttons query above.
+    setTelegramButtons([])
     setTelegramButtonsHydrated(!broker)
     closeTelegramDialog()
   }, [broker, isOpen])
@@ -837,7 +861,9 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       setActiveTab('basic')
       return
     }
+    if (submitting) return
 
+    setSubmitting(true)
     try {
       // Check if there's a pending account mapping that needs to be saved
       const hasPendingMapping = accountMappingData.field_name.trim() && accountMappingData.field_value.trim()
@@ -876,8 +902,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         right_ids: rightsToSync // Use selected permissions
       }
 
-      // Only send telegram buttons once we know the broker's real list, so a
-      // failed/slow detail fetch can never blank out existing buttons.
+      // Telegram buttons are stored on the broker. In edit mode they are already
+      // saved immediately on each change; here we include them so create mode
+      // persists them, and as a safety net on update. Only once hydrated, so a
+      // slow detail fetch can never blank out existing buttons.
       if (telegramButtonsHydrated) {
         cleanedData.telegram_buttons = telegramButtons
       }
@@ -893,10 +921,10 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
       // Create/update the broker
       const result = await onSubmit(cleanedData as CreateBrokerData | UpdateBrokerData)
 
-      // Drop the cached detail so the next open reloads the saved telegram buttons
+      // Refresh the broker detail (telegram buttons) cache for this broker
       const savedBrokerId = broker?.id || result?.id
       if (savedBrokerId) queryClient.invalidateQueries(['broker-detail', savedBrokerId])
-      
+
       // If this was a new broker creation and we have pending mappings, save them
       if (!broker && pendingMappings.length > 0 && result?.id) {
         try {
@@ -933,6 +961,9 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
     } catch (error) {
       // Error handling is done in the parent component and mutations
       console.error('Error in handleSubmit:', error)
+    } finally {
+      // Covers the whole save: broker + mappings + telegram + rights + groups
+      setSubmitting(false)
     }
   }
 
@@ -1282,6 +1313,8 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
 
 
   return (
+    <>
+    <SavingOverlay show={submitting || isLoading} label={broker ? 'Updating broker...' : 'Creating broker...'} />
     <AnimatePresence>
       {isOpen && (
         <>
@@ -1452,7 +1485,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                               type="number"
                               step="0.01"
                               name="credit_limit"
-                              value={formData.credit_limit || ''}
+                              value={formData.credit_limit ?? ''}
                               onChange={handleInputChange}
                               className="w-full px-3 py-2 text-sm border-2 border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-300 transition-all"
                               placeholder="Enter credit limit"
@@ -1693,7 +1726,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                                           </div>
                                         ))}
                                       </div>
-                                    </div>
+                                           </div>
                                   ) : (
                                     <div className="text-center py-12 bg-white rounded-lg border-2 border-dashed border-slate-300">
                                       <p className="text-sm text-slate-500">No rights found matching "{profileSearchQuery}"</p>
@@ -2222,7 +2255,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                           <div>
                             <h3 className="text-base font-semibold text-slate-900 mb-1">Telegram Buttons</h3>
                             <p className="text-xs text-slate-600">
-                              Configure the telegram buttons for this broker. Changes are saved when you {broker ? 'update' : 'create'} the broker.
+                              Configure the telegram buttons for this broker. {broker ? 'Changes are saved immediately.' : 'Buttons are saved when you create the broker.'}
                             </p>
                           </div>
                           <button
@@ -2354,7 +2387,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                       type="button"
                       onClick={onClose}
                       className="px-4 py-1.5 text-sm border-2 rounded-lg transition-all duration-200 font-medium border-slate-300 text-slate-700 hover:bg-white"
-                      disabled={isLoading}
+                      disabled={submitting || isLoading}
                     >
                       Cancel
                     </button>
@@ -2363,7 +2396,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                         type="button"
                         onClick={() => setActiveTab('basic')}
                         className="px-4 py-1.5 text-sm border-2 rounded-lg transition-all duration-200 font-medium border-slate-300 text-slate-700 hover:bg-white"
-                        disabled={isLoading}
+                        disabled={submitting || isLoading}
                       >
                         ← Back
                       </button>
@@ -2401,7 +2434,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                         <button
                           type="submit"
                           className="px-5 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
-                          disabled={isLoading || syncRightsMutation.isLoading}
+                          disabled={submitting || isLoading || syncRightsMutation.isLoading}
                         >
                           {isLoading || syncRightsMutation.isLoading ? (
                             <div className="flex items-center gap-1.5">
@@ -2420,7 +2453,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                       <button
                         type="submit"
                         className="px-5 py-1.5 text-sm bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm"
-                        disabled={isLoading || syncRightsMutation.isLoading}
+                        disabled={submitting || isLoading || syncRightsMutation.isLoading}
                       >
                         {isLoading || syncRightsMutation.isLoading ? (
                           <div className="flex items-center gap-1.5">
@@ -2579,15 +2612,18 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
                           <button
                             type="button"
                             onClick={closeTelegramDialog}
-                            className="px-4 py-1.5 text-sm border border-slate-300 rounded-lg font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+                            disabled={telegramSaving}
+                            className="px-4 py-1.5 text-sm border border-slate-300 rounded-lg font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors disabled:opacity-50"
                           >
                             Cancel
                           </button>
                           <button
                             type="button"
                             onClick={handleTelegramDialogSubmit}
-                            className="px-5 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                            disabled={telegramSaving}
+                            className="px-5 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm disabled:opacity-50 flex items-center gap-2"
                           >
+                            {telegramSaving && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                             {editingTelegramIndex !== null ? 'Update Button' : 'Add Button'}
                           </button>
                         </div>
@@ -2602,6 +2638,7 @@ const BrokerModal: React.FC<BrokerModalProps> = ({
         </>
       )}
     </AnimatePresence>
+    </>
   )
 }
 

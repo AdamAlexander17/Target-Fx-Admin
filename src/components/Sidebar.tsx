@@ -20,6 +20,7 @@ import {
   IdentificationIcon,
   AdjustmentsHorizontalIcon,
   CommandLineIcon,
+  AcademicCapIcon,
 } from '@heroicons/react/24/solid'
 import { cn } from '../lib/utils'
 import { useAuth } from '../contexts/AuthContext'
@@ -48,6 +49,7 @@ const allNavigation: NavigationItem[] = [
   { name: 'Settlements', href: '/settlement-weeks', icon: CalendarDaysIcon, module: MODULES.SETTLEMENT_WEEKS },
   // { name: 'Groups', href: '/groups', icon: Layers, module: MODULES.GROUPS },
   { name: 'Rules', href: '/rules', icon: AdjustmentsHorizontalIcon, module: MODULES.RULES },
+  { name: 'Tutorials', href: '/tutorials', icon: AcademicCapIcon, module: MODULES.TUTORIALS },
   { name: 'Audit Logs', href: '/audit-logs', icon: ClipboardDocumentListIcon, module: MODULES.AUDIT_LOGS },
   { name: 'Logs', href: '/logs', icon: CommandLineIcon, module: MODULES.LOGS },
   { name: 'API Metrics', href: '/api-metrics', icon: ChartBarIcon },

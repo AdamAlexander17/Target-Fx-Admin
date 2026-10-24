@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Role, Permission, CreateRoleData, UpdateRoleData } from '../types'
@@ -103,6 +104,8 @@ const RoleModal: React.FC<RoleModalProps> = ({
   if (!isOpen) return null
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -332,6 +335,7 @@ const RoleModal: React.FC<RoleModalProps> = ({
         </div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 

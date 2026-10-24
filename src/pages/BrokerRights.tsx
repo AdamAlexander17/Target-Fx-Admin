@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Loader from '../components/ui/Loader'
 import { useQuery } from 'react-query'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { brokerService } from '../services/brokerService'
@@ -57,11 +58,7 @@ const BrokerRights: React.FC = () => {
   }, {} as Record<string, BrokerRight[]>)
 
   if (brokersLoading || rightsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-500"></div>
-      </div>
-    )
+    return <Loader fullScreen label="Loading..." />
   }
 
   return (

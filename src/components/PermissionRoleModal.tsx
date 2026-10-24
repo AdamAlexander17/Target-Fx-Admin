@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQueryClient } from 'react-query'
 import { permissionService } from '../services/permissionService'
@@ -80,6 +81,7 @@ const PermissionRoleModal: React.FC<PermissionRoleModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
+      <SavingOverlay show={!!(addPermissionMutation.isLoading || removePermissionMutation.isLoading)} />
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-white0 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 

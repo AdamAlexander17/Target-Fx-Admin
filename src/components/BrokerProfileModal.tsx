@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { useQuery } from 'react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
@@ -209,6 +210,8 @@ const BrokerProfileModal: React.FC<BrokerProfileModalProps> = ({
   if (!isOpen) return null
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       <div className="fixed inset-0 z-50 overflow-y-auto">
         <div className="flex min-h-screen items-center justify-center p-4">
@@ -521,6 +524,7 @@ const BrokerProfileModal: React.FC<BrokerProfileModalProps> = ({
         </div>
       </div>
     </AnimatePresence>
+    </>
   )
 }
 

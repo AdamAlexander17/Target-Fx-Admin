@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Loader from '../components/ui/Loader'
 import { metricsService } from '../services/metricsService'
 import type { ApiMetric } from '../types/metrics'
 import toast from 'react-hot-toast'
@@ -94,13 +95,24 @@ export default function ApiMetrics() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-white to-white">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white shadow-lg mb-4">
-            <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-transparent"></div>
+      <div className="min-h-screen bg-gradient-to-br from-white via-white to-white">
+        <PageHeaderShell>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700">
+                <ChartBarIcon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900">API Metrics</h1>
+                <p className="text-xs font-medium text-slate-500">
+                  Real-time API endpoint performance monitoring
+                </p>
+              </div>
+            </div>
+            <div />
           </div>
-          <p className="text-slate-600 font-medium">Loading metrics...</p>
-        </div>
+        </PageHeaderShell>
+        <Loader label="Loading metrics..." />
       </div>
     )
   }

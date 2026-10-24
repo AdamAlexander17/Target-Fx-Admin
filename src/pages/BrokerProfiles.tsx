@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import Loader from '../components/ui/Loader'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion } from 'framer-motion'
 import { PlusIcon, MagnifyingGlassIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
@@ -284,9 +285,7 @@ const BrokerProfiles: React.FC = () => {
               </div>
             </div>
               {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300"></div>
-                </div>
+                <Loader label="Loading broker profiles..." />
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">

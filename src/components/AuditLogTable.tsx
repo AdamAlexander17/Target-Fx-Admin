@@ -1,4 +1,5 @@
 import React from 'react'
+import Loader from './ui/Loader'
 import { motion } from 'framer-motion'
 import { AuditLog } from '../types'
 import { format } from 'date-fns'
@@ -44,9 +45,7 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, isLoading, onSort, 
           : 'bg-white/80 border-white/60'
       }`}>
         {topContent && <div className="p-3 mb-3 border-b border-slate-300">{topContent}</div>}
-        <div className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300"></div>
-        </div>
+        <Loader label="Loading audit logs..." />
       </div>
     )
   }

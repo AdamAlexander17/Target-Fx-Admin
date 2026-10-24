@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import Loader from '../components/ui/Loader'
 import { useQuery } from 'react-query'
 import { 
   UserCircleIcon,
@@ -186,10 +187,7 @@ const Profile: React.FC = () => {
                   ? 'bg-blue-800/80 border-blue-700/60' 
                   : 'bg-white/80 border-white/60'
               }`}>
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-300 mx-auto mb-6"></div>
-                  <p className={`font-medium ${false ? 'text-slate-300' : 'text-slate-600'}`}>Loading profile...</p>
-                </div>
+                <Loader label="Loading profile..." />
               </div>
             ) : (
               renderTabContent()

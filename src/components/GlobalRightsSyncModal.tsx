@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { motion, AnimatePresence } from 'framer-motion'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useQuery } from 'react-query'
@@ -63,6 +64,8 @@ const GlobalRightsSyncModal: React.FC<GlobalRightsSyncModalProps> = ({
   if (!isOpen) return null
 
   return (
+    <>
+    <SavingOverlay show={!!(isLoading)} />
     <AnimatePresence>
       <div className="fixed inset-0 z-50 overflow-y-auto">
         {/* Backdrop */}
@@ -221,6 +224,7 @@ const GlobalRightsSyncModal: React.FC<GlobalRightsSyncModalProps> = ({
         </div>
       </div>
     </AnimatePresence>
+    </>
   )
 }
 

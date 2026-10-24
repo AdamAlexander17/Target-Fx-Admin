@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import Loader from './ui/Loader'
 import { UserGroupIcon, ShieldCheckIcon, ChartBarIcon, UserCircleIcon, EyeIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
 import { Role } from '../types'
 import { PermissionGate } from './PermissionGate'
@@ -73,10 +74,7 @@ const RoleTable: React.FC<RoleTableProps> = ({
         'bg-white'
       }`}>
         {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-        <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-6"></div>
-          <p className="font-medium text-slate-600">Loading roles...</p>
-        </div>
+        <Loader label="Loading roles..." />
       </div>
     )
   }

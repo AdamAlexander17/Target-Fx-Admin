@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import Loader from './ui/Loader'
 import { motion } from 'framer-motion'
 import { 
   PowerIcon,
@@ -83,13 +84,7 @@ const GroupTable: React.FC<GroupTableProps> = ({
           : 'bg-white/80 border-white/60'
       }`}>
         {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-        <div className="p-6">
-          <div className="animate-pulse space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 rounded-lg bg-blue-200"></div>
-            ))}
-          </div>
-        </div>
+        <Loader label="Loading groups..." />
       </div>
     )
   }

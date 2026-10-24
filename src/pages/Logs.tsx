@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import Loader from '../components/ui/Loader'
 import { useQuery } from 'react-query'
 import { 
   MagnifyingGlassIcon,
@@ -352,9 +353,7 @@ const Logs: React.FC = () => {
           {/* Log Content */}
           <div className="rounded-lg p-3 min-h-[320px] max-h-[320px] overflow-auto border border-slate-800 bg-black">
             {isLoadingContent ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-300"></div>
-              </div>
+              <Loader label="Loading logs..." />
             ) : logContent && logContent.lines.length > 0 ? (
               <pre className="text-xs text-yellow-400 font-mono leading-relaxed whitespace-pre-wrap break-all">
                 {logContent.lines.map((line, index) => (

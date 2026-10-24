@@ -26,6 +26,7 @@ import CreateBroker from './pages/CreateBroker'
 import BrokerBills from './pages/BrokerBills'
 import BrokerExchange from './pages/BrokerExchange'
 import SettlementWeeks from './pages/SettlementWeeks'
+import Tutorials from './pages/Tutorials'
 import { MODULES, PERMISSIONS } from './utils/permissions'
 
 
@@ -99,6 +100,7 @@ function App() {
                                         <Route path="/brokers/:brokerId/bills" element={<ModuleRoute module={MODULES.BROKERS} title="Bills"><BrokerBills /></ModuleRoute>} />
                                         <Route path="/brokers/:brokerId/exchange-data" element={<ModuleRoute module={MODULES.BROKERS} title="Exchange Data"><BrokerExchange /></ModuleRoute>} />
                                         <Route path="/settlement-weeks" element={<ModuleRoute module={MODULES.SETTLEMENT_WEEKS} title="Settlement Weeks"><SettlementWeeks /></ModuleRoute>} />
+                                        <Route path="/tutorials" element={<ModuleRoute module={MODULES.TUTORIALS} title="Tutorials"><Tutorials /></ModuleRoute>} />
                                     </Routes>
                                 </motion.div>
                             </Layout>

@@ -98,7 +98,15 @@ export interface Broker {
  account_range_from: number
  account_range_to: number
  is_active: boolean
- credit_limit?: number
+ credit_limit?: number | null
+ available_credit?: number | null
+ max_credit_per_account?: number | null
+ credit_usage?: {
+  used_credit?: number | null
+  max_credit_per_account?: number | null
+  credit_limit?: number | null
+  available_credit?: number | null
+ } | null
  default_percentage?: number
  telegram_id?: number
  match_all_condition?: boolean

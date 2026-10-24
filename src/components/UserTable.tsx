@@ -1,4 +1,5 @@
 import React from 'react'
+import Loader from './ui/Loader'
 import { 
   UserGroupIcon
 } from '@heroicons/react/24/outline'
@@ -55,20 +56,7 @@ const UserTable: React.FC<UserTableProps> = ({
             {topContent}
           </div>
         )}
-        <div className="p-12 text-center">
-          <div className="relative inline-flex">
-            <div className={`animate-spin rounded-full h-12 w-12 border-4 ${
-              false 
-                ? 'border-blue-700 border-t-blue-500' 
-                : 'border-slate-300 border-t-blue-600'
-            }`}></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-6 w-6 rounded-full bg-blue-700/10"></div>
-            </div>
-          </div>
-          <p className="font-semibold mt-4 text-sm text-slate-600">Loading users...</p>
-          <p className="text-xs mt-1 text-slate-400">Please wait while we fetch the data</p>
-        </div>
+        <Loader label="Loading users..." />
       </div>
     )
   }

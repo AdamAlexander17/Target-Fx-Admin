@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import SavingOverlay from './ui/SavingOverlay'
 import { XMarkIcon, PlusIcon, TrashIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { brokerRightsService } from '../services/brokerRightsService'
@@ -147,6 +148,7 @@ const BrokerRightsModal: React.FC<BrokerRightsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
+      <SavingOverlay show={!!(syncRightsMutation.isLoading || assignRightMutation.isLoading || revokeRightMutation.isLoading)} />
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-white0 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
