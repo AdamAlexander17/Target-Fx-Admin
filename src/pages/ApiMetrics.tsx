@@ -260,7 +260,7 @@ export default function ApiMetrics() {
             <span>Refresh</span>
           </button>
         </div>
-        <div className="w-full">
+        <div className="w-full overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
           <table className="w-full table-fixed divide-y divide-slate-200">
             <colgroup>
               <col style={{ width: '34%' }} />

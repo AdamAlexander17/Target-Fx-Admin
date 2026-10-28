@@ -287,9 +287,9 @@ const BrokerProfiles: React.FC = () => {
               {isLoading ? (
                 <Loader label="Loading broker profiles..." />
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
                   <table className="w-full">
-                    <thead className="bg-white border-b border-slate-300">
+                    <thead className="sticky top-0 z-10 bg-white border-b border-slate-300">
                       <tr>
                         <th 
                           onClick={() => handleSort('name')}

@@ -93,9 +93,9 @@ const UserTable: React.FC<UserTableProps> = ({
             {topContent}
           </div>
         )}
-        <div className="overflow-x-auto">
+        <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
         <table className="w-full">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white">
             <tr className={`border-b ${
               false 
                 ? 'bg-gradient-to-r from-blue-900/50 to-blue-900/20 border-blue-700' 

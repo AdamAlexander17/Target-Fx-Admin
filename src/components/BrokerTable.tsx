@@ -66,7 +66,7 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
   // null/undefined → "0.0"; numbers in Indian grouping with 2 decimals
   const formatCredit = (v?: number | null) =>
     v === null || v === undefined || Number.isNaN(Number(v))
-      ? '0.0'
+      ? '0.00'
       : Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   const getRightsDisplay = (brokerId: number) => {
@@ -171,9 +171,9 @@ const BrokerTable: React.FC<BrokerTableProps> = ({
       </div>
 
       {/* Desktop view */}
-      <div className="hidden sm:block overflow-x-auto">
+      <div className="hidden sm:block overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
           <table className="w-full">
-            <thead className={`border-b transition-colors ${
+            <thead className={`sticky top-0 z-10 bg-white border-b transition-colors ${
               false 
                 ? 'bg-blue-700/50 border-blue-600' 
                 : 'bg-white border-slate-300'

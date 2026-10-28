@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PlusIcon, FunnelIcon, MagnifyingGlassIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, FunnelIcon, MagnifyingGlassIcon, ArrowPathIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import { BuildingOfficeIcon } from '@heroicons/react/24/solid'
 import { brokerService } from '../services/brokerService'
 import { brokerRightsService } from '../services/brokerRightsService'
@@ -464,6 +464,16 @@ const Brokers: React.FC = () => {
                   <ArrowPathIcon className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
                   <span>Refresh</span>
                 </button>
+                <PermissionGate module={MODULES.TELEGRAM_BROADCASTS} action="view">
+                  <button
+                    onClick={() => navigate('/brokers/telegram-broadcasts')}
+                    className="px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap shadow-sm text-sm hover:bg-slate-50"
+                    title="Send a Telegram message to brokers"
+                  >
+                    <PaperAirplaneIcon className="w-4 h-4" />
+                    <span>Broadcast</span>
+                  </button>
+                </PermissionGate>
                 <PermissionGate module={MODULES.BROKERS} action="create">
                   <button
                     onClick={handleCreateBroker}

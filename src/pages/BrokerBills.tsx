@@ -512,9 +512,9 @@ const BrokerBills: React.FC = () => {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
             <table className="w-full">
-              <thead className="bg-blue-600 text-white">
+              <thead className="sticky top-0 z-10 bg-blue-600 text-white">
                 <tr>
                   <th className="px-3 py-2.5 text-left w-10">
                     <input

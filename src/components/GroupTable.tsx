@@ -352,9 +352,9 @@ const GroupTable: React.FC<GroupTableProps> = ({
 
       {/* Desktop table view */}
       <div className="hidden lg:block bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
         <table className="w-full">
-          <thead className={`border-b transition-colors ${
+          <thead className={`sticky top-0 z-10 bg-white border-b transition-colors ${
             false 
               ? 'bg-blue-700/50 border-blue-600' 
               : 'bg-white border-slate-300'

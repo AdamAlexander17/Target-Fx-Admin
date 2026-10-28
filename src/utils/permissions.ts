@@ -58,6 +58,7 @@ export const PERMISSIONS = {
  
  // System permissions
  SYSTEM_ADMIN: 'system.admin',
+ TELEGRAM_BROADCAST: 'telegram.broadcast',
  API_ACCESS: 'api.access',
  AUDIT_READ: 'audit.read',
  
@@ -101,6 +102,8 @@ export const MODULES = {
  PROFILE: 'profile', // Portfolio/Settings
  SETTLEMENT_WEEKS: 'settlement_weeks', // Settlement-week CRUD
  TUTORIALS: 'tutorials', // Tutorial videos CRUD
+ BROKER_ACTIVITY: 'broker_activity', // Live broker usage (needs brokers.view)
+ TELEGRAM_BROADCASTS: 'telegram_broadcasts', // Telegram broadcasts (needs telegram.broadcast)
 } as const
 
 // Default mapping (fallback when backend doesn't send permissions)
@@ -315,6 +318,8 @@ export const canViewModule = (module: string, user?: User | null): boolean => {
  const viewPermissionMap: { [key: string]: string } = {
  [MODULES.USERS]: PERMISSIONS.USERS_VIEW,
  [MODULES.BROKERS]: PERMISSIONS.BROKERS_VIEW,
+ [MODULES.BROKER_ACTIVITY]: PERMISSIONS.BROKERS_VIEW,
+ [MODULES.TELEGRAM_BROADCASTS]: PERMISSIONS.TELEGRAM_BROADCAST,
  [MODULES.BROKER_PROFILES]: PERMISSIONS.BROKER_PROFILE_VIEW,
  [MODULES.ROLES]: PERMISSIONS.ROLES_VIEW,
  [MODULES.RULES]: PERMISSIONS.MANAGE_RULES, // backend uses 'manage_rules'

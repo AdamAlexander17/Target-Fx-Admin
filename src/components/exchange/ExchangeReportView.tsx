@@ -265,7 +265,7 @@ const ExchangeReportView: React.FC<ExchangeReportViewProps> = ({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto border-t border-slate-200">
+          <div className="min-h-0 flex-1 overflow-auto no-scrollbar border-t border-slate-200">
             <table className="w-max min-w-full border-separate border-spacing-0">
               <thead className="bg-[#09246B] text-white">
                 <tr>

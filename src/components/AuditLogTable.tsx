@@ -66,7 +66,7 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, isLoading, onSort, 
   return (
     <div className="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
       {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
         <table className="w-full table-fixed text-sm">
           <colgroup>
             <col className="w-[60px]" />
@@ -78,7 +78,7 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, isLoading, onSort, 
             <col className="w-[170px]" />
             <col />
           </colgroup>
-          <thead className="bg-slate-50 border-b border-slate-200">
+          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
             <tr>
               <th
                 onClick={() => onSort?.('id')}

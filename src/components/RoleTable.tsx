@@ -101,9 +101,9 @@ const RoleTable: React.FC<RoleTableProps> = ({
   return (
     <div className="bg-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
       {topContent && <div className="p-3 border-b border-slate-300">{topContent}</div>}
-      <div className="overflow-x-auto">
+      <div className="overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
         <table className="w-full">
-          <thead className={`border-b ${
+          <thead className={`sticky top-0 z-10 bg-white border-b ${
             false 
               ? 'bg-blue-700/50 border-blue-600' 
               : 'bg-white border-slate-300'

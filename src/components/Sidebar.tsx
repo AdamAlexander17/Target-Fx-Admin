@@ -11,6 +11,7 @@ import {
   UserGroupIcon,
   Squares2X2Icon,
   CalendarDaysIcon,
+  SignalIcon,
 } from '@heroicons/react/24/outline'
 import {
   ShieldCheckIcon,
@@ -45,6 +46,7 @@ const allNavigation: NavigationItem[] = [
   { name: 'Users', href: '/users', icon: UserGroupIcon, module: MODULES.USERS },
   { name: 'Roles', href: '/roles', icon: ShieldCheckIcon, module: MODULES.ROLES },
   { name: 'Brokers', href: '/brokers', icon: BuildingOfficeIcon, module: MODULES.BROKERS },
+  { name: 'Brokers Activity', href: '/broker-activity', icon: SignalIcon, module: MODULES.BROKER_ACTIVITY },
   { name: 'Broker Profiles', href: '/broker-profiles', icon: IdentificationIcon, module: MODULES.BROKER_PROFILES },
   { name: 'Settlements', href: '/settlement-weeks', icon: CalendarDaysIcon, module: MODULES.SETTLEMENT_WEEKS },
   // { name: 'Groups', href: '/groups', icon: Layers, module: MODULES.GROUPS },
@@ -184,13 +186,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
           {/* Navigation */}
           <div className={cn(
-            "flex-1 overflow-y-auto overflow-x-hidden",
+            "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar",
             isCollapsed ? "px-2 pt-8 pb-6" : "px-4 py-6"
           )}>
             <nav className={cn(isCollapsed ? "space-y-2" : "space-y-1")}>
               {navigation.map((item, index) => {
                 const Icon = item.icon
-                const isActive = location.pathname === item.href
+                const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href + '/'))
                 
                 return (
                   <div key={item.name}>
@@ -239,7 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               onClick={handleLogout}
               title={isCollapsed ? 'Sign Out' : undefined}
               className={cn(
-                "flex items-center rounded-lg transition-all duration-200 group text-slate-600 hover:bg-red-50 hover:text-red-600",
+                "flex items-center rounded-lg transition-all duration-200 group text-red-600 hover:bg-red-50 hover:text-red-700",
                 isCollapsed ? "justify-center h-11 w-11 mx-auto" : "w-full space-x-3 p-3"
               )}
             >
@@ -306,11 +308,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Navigation */}
-                <div className="flex-1 px-4 py-6 overflow-y-auto">
+                <div className="flex-1 px-4 py-6 overflow-y-auto no-scrollbar">
                   <nav className="space-y-1">
                     {navigation.map((item, index) => {
                       const Icon = item.icon
-                      const isActive = location.pathname === item.href
+                      const isActive = location.pathname === item.href || (item.href !== '/' && location.pathname.startsWith(item.href + '/'))
                       
                       return (
                         <div key={item.name}>
@@ -345,7 +347,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                       onClose()
                       handleLogout()
                     }}
-                    className="w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 text-slate-600 hover:bg-red-50 hover:text-red-600"
+                    className="w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
                     <LogOut className="w-5 h-5" />
                     <span className="font-medium">Sign Out</span>

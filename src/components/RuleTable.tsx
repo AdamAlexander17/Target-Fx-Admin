@@ -165,9 +165,9 @@ const RuleTable: React.FC<RuleTableProps> = ({
       </div>
 
       {/* Desktop view */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden lg:block overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
         <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-white">
+          <thead className="sticky top-0 z-10 bg-white">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                 Rule Name

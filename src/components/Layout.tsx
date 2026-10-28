@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="flex-1 overflow-x-hidden overflow-y-auto"
+          className="flex-1 overflow-x-hidden overflow-y-auto no-scrollbar"
         >
           <div className="">
             {children}

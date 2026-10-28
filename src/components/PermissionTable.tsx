@@ -66,9 +66,9 @@ const PermissionTable: React.FC<PermissionTableProps> = ({
           </div>
 
           {/* Desktop view */}
-          <div className="hidden sm:block overflow-x-auto">
+          <div className="hidden sm:block overflow-auto no-scrollbar max-h-[calc(100vh-220px)]">
             <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-white">
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Permission

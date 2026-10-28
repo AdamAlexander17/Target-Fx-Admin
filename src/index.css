@@ -50,6 +50,18 @@ select:-webkit-autofill:focus {
   background-color: #9ca3af;
 }
 
+/* Scrolls normally (wheel / touchpad / touch / keyboard) but hides the bar.
+   Used on the page area and on every data table. */
+.no-scrollbar {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* old Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;              /* Chrome, Edge, Safari */
+  width: 0;
+  height: 0;
+}
+
 @layer base {
   body {
     @apply bg-white text-zinc-900 antialiased;
