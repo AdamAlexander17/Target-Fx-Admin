@@ -12,10 +12,15 @@ import {
   ChatBubbleLeftRightIcon,
   SparklesIcon,
   ClockIcon,
+  ArrowDownTrayIcon,
+  ChevronDownIcon,
+  TableCellsIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline'
 import { BoltIcon } from '@heroicons/react/24/solid'
 import PageHeaderShell from '../components/layout/PageHeaderShell'
 import Loader from '../components/ui/Loader'
+import { exportBrokerActivityExcel, exportBrokerActivityCsv } from '../components/brokerActivity/exportBrokerActivity'
 import {
   brokerActivityService,
   ActivityChannel,
@@ -67,6 +72,8 @@ const BrokerActivity: React.FC = () => {
   const [search, setSearch] = useState('')
   const [pageSize, setPageSize] = useState(25)
   const [page, setPage] = useState(1)
+  const [exportOpen, setExportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const { data, isLoading, isFetching, refetch } = useQuery(
     ['broker-activity', days, liveMinutes, liveOnly],
@@ -93,6 +100,24 @@ const BrokerActivity: React.FC = () => {
       (b) => b.username.toLowerCase().includes(term) || b.full_name.toLowerCase().includes(term) || String(b.id).includes(term)
     )
   }, [data, search])
+
+  const handleExport = async (format: 'xlsx' | 'csv') => {
+    setExportOpen(false)
+    if (!data) return
+    if (filtered.length === 0) { toast.error('Nothing to export'); return }
+    const suffix = liveOnly ? 'live' : 'all'
+    setExporting(true)
+    try {
+      if (format === 'csv') exportBrokerActivityCsv(filtered, suffix)
+      else await exportBrokerActivityExcel(data, filtered, suffix)
+      toast.success(`Exported ${filtered.length} broker${filtered.length === 1 ? '' : 's'}`)
+    } catch (e) {
+      console.error('Export failed:', e)
+      toast.error('Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, totalPages)
@@ -172,6 +197,52 @@ const BrokerActivity: React.FC = () => {
               <ArrowPathIcon className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </button>
+
+            {/* Export: every row of the current view (All / Live only + search), not just this page */}
+            <div className="relative">
+              <button
+                onClick={() => setExportOpen((o) => !o)}
+                disabled={!data || exporting}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1.5 shadow-sm text-sm font-semibold disabled:opacity-60"
+              >
+                {exporting ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                ) : (
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                )}
+                Export
+                <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${exportOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {exportOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setExportOpen(false)} />
+                  <div className="absolute right-0 z-50 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                    <p className="border-b border-slate-100 px-3 py-2 text-[11px] text-slate-500">
+                      {filtered.length} {liveOnly ? 'live ' : ''}broker{filtered.length === 1 ? '' : 's'}
+                      {search.trim() ? ' matching your search' : ''}
+                    </p>
+                    {[
+                      { key: 'xlsx', label: 'Excel (.xlsx)', hint: 'Brokers, summary & daily sheets', icon: TableCellsIcon, color: 'text-green-600 bg-green-50' },
+                      { key: 'csv', label: 'CSV (.csv)', hint: 'Broker list only', icon: DocumentTextIcon, color: 'text-blue-600 bg-blue-50' },
+                    ].map((o) => (
+                      <button
+                        key={o.key}
+                        onClick={() => handleExport(o.key as 'xlsx' | 'csv')}
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50"
+                      >
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${o.color}`}>
+                          <o.icon className="h-4 w-4" />
+                        </span>
+                        <span>
+                          <span className="block text-sm font-medium text-slate-800">{o.label}</span>
+                          <span className="block text-[11px] text-slate-500">{o.hint}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </PageHeaderShell>
