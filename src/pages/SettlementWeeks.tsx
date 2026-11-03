@@ -26,6 +26,15 @@ const toIsoDate = (d: string | undefined): string => {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : ''
 }
 
+// API may send flags as true/false, 1/0, "1"/"0", "true"/"false" — normalize
+const toBool = (v: unknown): boolean =>
+  v === true ||
+  v === 1 ||
+  v === '1' ||
+  v === 'true' ||
+  v === 'yes' ||
+  v === 'on'
+
 const fmtDate = (d: string | undefined): string => {
   const iso = toIsoDate(d)
   if (!iso) return '—'
@@ -43,7 +52,6 @@ interface FormState {
   start_date: string
   end_date: string
   is_active: boolean
-  is_current: boolean
 }
 
 const blankForm: FormState = {
@@ -51,7 +59,6 @@ const blankForm: FormState = {
   start_date: '',
   end_date: '',
   is_active: true,
-  is_current: false,
 }
 
 interface ModalProps {
@@ -79,8 +86,8 @@ const SettlementWeekModal: React.FC<ModalProps> = ({
         name: initial.name ?? '',
         start_date: toIsoDate(initial.start_date),
         end_date: toIsoDate(initial.end_date),
-        is_active: initial.is_active ?? true,
-        is_current: initial.is_current ?? false,
+        is_active:
+          initial.is_active === undefined ? true : toBool(initial.is_active),
       })
     } else {
       setForm(blankForm)
@@ -108,7 +115,6 @@ const SettlementWeekModal: React.FC<ModalProps> = ({
       start_date: form.start_date,
       end_date: form.end_date,
       is_active: form.is_active,
-      is_current: form.is_current,
     }
     onSubmit(payload)
   }
@@ -254,17 +260,6 @@ const SettlementWeekModal: React.FC<ModalProps> = ({
                       className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300"
                     />
                     <span>Active</span>
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={form.is_current}
-                      onChange={(e) =>
-                        setForm({ ...form, is_current: e.target.checked })
-                      }
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-300"
-                    />
-                    <span>Current Week</span>
                   </label>
                 </div>
               </form>
